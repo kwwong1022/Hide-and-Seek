@@ -24,14 +24,23 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.ar.core.Anchor;
+import com.google.ar.sceneform.AnchorNode;
+import com.google.ar.sceneform.rendering.ModelRenderable;
+import com.google.ar.sceneform.ux.ArFragment;
+import com.google.ar.sceneform.ux.TransformableNode;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
     private static final String TAG = "MapsActivity";
     private static final int DEFAULT_UPDATE_INTERVAL = 5000;
     private static final int FAST_UPDATE_INTERVAL = 1000;
     private static final int FINE_LOCATION_REQUEST_CODE = 1;
+    // ==================================== =================== ====================================
+
 
     private GoogleMap mMap;
+    private ArFragment arFragment;
+    private ModelRenderable modelRenderable;
     private LocationRequest locationRequest;
     private LocationCallback locationCallBack;
     private FusedLocationProviderClient fusedLocationClient;
@@ -41,9 +50,38 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        // AR fragment
+        arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.sceneform_fragment);
+
+        ModelRenderable.builder()
+                .setSource(this, R.raw.dog_standing)
+                .setIsFilamentGltf(true)
+                .build() // returns a completableFuture
+                .thenAccept(renderable -> modelRenderable = renderable)
+                .exceptionally(throwable -> {
+                    Log.d(TAG, "Model Renderable: unable to load Renderable", throwable);
+                    return null;
+                });
+
+        arFragment.setOnTapArPlaneListener((hitResult, plane, motionEvent) -> {
+//            if (modelRenderable == null) return;
+
+            Anchor anchor = hitResult.createAnchor();
+            AnchorNode anchorNode = new AnchorNode(anchor);
+            anchorNode.setParent(arFragment.getArSceneView().getScene());
+
+            TransformableNode modelNode = new TransformableNode(arFragment.getTransformationSystem());
+            modelNode.setParent(anchorNode);
+            modelNode.setRenderable(modelRenderable);
+            modelNode.select();
+
+//            modelNode.setOnTapListener((hitTestResult, motionEvent1) -> {
+//
+//            });
+        });
 
         // location
         initLocationRequest();
@@ -61,6 +99,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         updateLocation();
     }
 
+
+    // ==================================== =================== ====================================
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -100,17 +140,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private void updateMapUI(Location location) {
         mMap.clear();
 
-        CameraPosition cameraPosition = new CameraPosition.Builder()
-                .target(new LatLng(location.getLatitude(), location.getLongitude()))
-                .bearing(0)   // degrees clockwise from north
-                .zoom(17).build();
-        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        if (location != null) {
+            CameraPosition cameraPosition = new CameraPosition.Builder()
+                    .target(new LatLng(location.getLatitude(), location.getLongitude()))
+                    .bearing(0)   // degrees clockwise from north
+                    .zoom(17).build();
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
 
-        mMap.addMarker(new MarkerOptions()
-                .position(new LatLng(location.getLatitude(), location.getLongitude()))
-                //.title("")
-                //.icon(BitmapDescriptorFactory.fromResource(R.drawable.marker_user))
-                ).showInfoWindow();
+            mMap.addMarker(new MarkerOptions()
+                            .position(new LatLng(location.getLatitude(), location.getLongitude()))
+                    //.title("")
+                    //.icon(BitmapDescriptorFactory.fromResource(R.drawable.marker_user))
+            ).showInfoWindow();
+        }
     }
 
     @Override
@@ -120,6 +162,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         updateLocation();
     }
 
+
+    // ==================================== activity life cycle ====================================
     @Override
     protected void onResume() {
         super.onResume();

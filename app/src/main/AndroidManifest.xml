@@ -3,6 +3,13 @@
     package="scm.kaifwong8_cswong274.hideandseek">
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Always needed for AR. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- This tag indicates that this application requires ARCore.
+        This results in the application
+            only being visible in the Google Play Store on devices that support ARCore. -->
+    <uses-feature android:name="android.hardware.camera.ar" android:required="true"/>
+
 
     <application
         android:allowBackup="true"
@@ -28,6 +35,8 @@
             android:name=".MapsActivity"
             android:label="@string/title_activity_maps">
         </activity>
+
+        <meta-data android:name="com.google.ar.core" android:value="required" />
     </application>
 
 </manifest>

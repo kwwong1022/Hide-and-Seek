@@ -1,2 +1,4 @@
+include ':sceneformux'
+include ':sceneform'
 include ':app'
 rootProject.name = "HideAndSeek"
