@@ -67,7 +67,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 });
 
         arFragment.setOnTapArPlaneListener((hitResult, plane, motionEvent) -> {
-//            if (modelRenderable == null) return;
+            // if (modelRenderable == null) return;
 
             Anchor anchor = hitResult.createAnchor();
             AnchorNode anchorNode = new AnchorNode(anchor);
@@ -76,11 +76,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             TransformableNode modelNode = new TransformableNode(arFragment.getTransformationSystem());
             modelNode.setParent(anchorNode);
             modelNode.setRenderable(modelRenderable);
+
+            arFragment.getArSceneView().getScene().addChild(anchorNode);
+
             modelNode.select();
 
-//            modelNode.setOnTapListener((hitTestResult, motionEvent1) -> {
-//
-//            });
+            // modelNode.setOnTapListener((hitTestResult, motionEvent1) -> {});
         });
 
         // location
