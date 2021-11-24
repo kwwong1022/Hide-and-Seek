@@ -18,8 +18,5 @@ public class MainActivity extends AppCompatActivity {
             Intent i = new Intent(MainActivity.this, MapsActivity.class);
             startActivity(i);
         });
-
     }
-
-
 }
