@@ -1,6 +1,7 @@
 package scm.kaifwong8_cswong274.hideandseek;
 
 import androidx.annotation.NonNull;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
@@ -23,7 +24,9 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.ar.core.Anchor;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.rendering.ModelRenderable;
@@ -37,13 +40,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int FINE_LOCATION_REQUEST_CODE = 1;
     // ==================================== =================== ====================================
 
-
     private GoogleMap mMap;
     private ArFragment arFragment;
     private ModelRenderable modelRenderable;
     private LocationRequest locationRequest;
     private LocationCallback locationCallBack;
     private FusedLocationProviderClient fusedLocationClient;
+
+    private boolean isShootAvailable;
+    private boolean isShieldAvailable;
+    private boolean isCameraEnabled = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,7 +59,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        // AR fragment
+
+        // ========================================== AR ===========================================
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.sceneform_fragment);
 
         ModelRenderable.builder()
@@ -84,7 +91,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             // modelNode.setOnTapListener((hitTestResult, motionEvent1) -> {});
         });
 
-        // location
+
+        // ======================================= location ========================================
         initLocationRequest();
         locationCallBack = new LocationCallback() {
             @Override
@@ -96,12 +104,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         };
 
+        // ========================================== UI ===========================================
+        ConstraintLayout ui_background = findViewById(R.id.ui_background);
+        ConstraintLayout ar_fr_container = findViewById(R.id.ar_fr_container);
+        FloatingActionButton btn_shoot = findViewById(R.id.btn_shoot);
+        FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
+        FloatingActionButton btn_camera = findViewById(R.id.btn_camera);
+
+
         // must be the last func in onCreate
         updateLocation();
     }
 
 
-    // ==================================== =================== ====================================
+
+
+
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -160,8 +179,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
+        try {
+            boolean success = mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this, R.raw.mapstyle));
+            if (!success) Log.e(TAG, "Style parsing failed.");
+        } catch (Exception e) { Log.e(TAG, "Can't find style. Error: ", e); }
+
         updateLocation();
     }
+
+
+
 
 
     // ==================================== activity life cycle ====================================
