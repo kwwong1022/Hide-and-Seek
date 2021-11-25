@@ -47,6 +47,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private LocationCallback locationCallBack;
     private FusedLocationProviderClient fusedLocationClient;
 
+    private Location currLocation;
+
     private boolean isShootAvailable;
     private boolean isShieldAvailable;
     private boolean isCameraEnabled = true;
@@ -99,8 +101,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             public void onLocationResult(@NonNull LocationResult locationResult) {
                 super.onLocationResult(locationResult);
 
-                Location location = locationResult.getLastLocation();
-                updateMapUI(location);
+                currLocation = locationResult.getLastLocation();
+                updateMapUI(currLocation);
+                if (locationResult.getLastLocation().getSpeed()>5) {
+                    updateMapCamera(currLocation);
+                }
             }
         };
 
@@ -109,7 +114,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         FloatingActionButton btn_shoot = findViewById(R.id.btn_shoot);
         FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
         FloatingActionButton btn_camera = findViewById(R.id.btn_camera);
+        FloatingActionButton btn_map_focus = findViewById(R.id.btn_map_focus);
 
+        btn_map_focus.setOnClickListener(v -> {
+            updateMapCamera(currLocation);
+        });
 
         // must be the last func in onCreate
         updateLocation();
@@ -150,6 +159,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
                 updateMapUI(location);
+                updateMapCamera(location);
             });
         } else {
             ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_REQUEST_CODE);
@@ -160,17 +170,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.clear();
 
         if (location != null) {
-            CameraPosition cameraPosition = new CameraPosition.Builder()
-                    .target(new LatLng(location.getLatitude(), location.getLongitude()))
-                    .bearing(0)   // degrees clockwise from north
-                    .zoom(17).build();
-            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
-
             mMap.addMarker(new MarkerOptions()
                             .position(new LatLng(location.getLatitude(), location.getLongitude()))
                     //.title("")
                     //.icon(BitmapDescriptorFactory.fromResource(R.drawable.marker_user))
             ).showInfoWindow();
+        }
+    }
+
+    private void updateMapCamera(Location location) {
+        if (location != null) {
+            CameraPosition cameraPosition = new CameraPosition.Builder()
+                    .target(new LatLng(location.getLatitude(), location.getLongitude()))
+                    .bearing(0)   // degrees clockwise from north
+                    .zoom(17).build();
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
     }
 
