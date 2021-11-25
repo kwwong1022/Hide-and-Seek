@@ -106,7 +106,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         // ========================================== UI ===========================================
         ConstraintLayout ui_background = findViewById(R.id.ui_background);
-        ConstraintLayout ar_fr_container = findViewById(R.id.ar_fr_container);
         FloatingActionButton btn_shoot = findViewById(R.id.btn_shoot);
         FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
         FloatingActionButton btn_camera = findViewById(R.id.btn_camera);
