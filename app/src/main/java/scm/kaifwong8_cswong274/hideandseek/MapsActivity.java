@@ -6,10 +6,14 @@ import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
+import android.app.Fragment;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -33,7 +37,7 @@ import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, View.OnClickListener {
     private static final String TAG = "MapsActivity";
     private static final int DEFAULT_UPDATE_INTERVAL = 5000;
     private static final int FAST_UPDATE_INTERVAL = 1000;
@@ -51,7 +55,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private boolean isShootAvailable;
     private boolean isShieldAvailable;
-    private boolean isCameraEnabled = true;
+    private boolean isCameraEnabled = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +65,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
+        FloatingActionButton CameraBtn = (FloatingActionButton) findViewById(R.id.btn_camera);
+        CameraBtn.setOnClickListener(v -> {
+            Log.i("Tag1","BtnCam");
+            if (!isCameraEnabled){
+                ConstraintLayout mConstrainLayout  = (ConstraintLayout) findViewById(R.id.top_fragment);
+                ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
+                lp.matchConstraintPercentHeight = (float) 1;
+                mConstrainLayout.setLayoutParams(lp);
+                isCameraEnabled = !isCameraEnabled;
+            }
+            else {
+                ConstraintLayout mConstrainLayout  = (ConstraintLayout) findViewById(R.id.top_fragment);
+                ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
+                lp.matchConstraintPercentHeight = (float) 0;
+                mConstrainLayout.setLayoutParams(lp);
+                isCameraEnabled = !isCameraEnabled;
+
+            }
+        });
 
         // ========================================== AR ===========================================
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.sceneform_fragment);
@@ -229,5 +252,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         super.onDestroy();
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()){
+            case R.id.btn_camera:
+                Log.i("Tag1","BtnCam");
+                break;
+        }
+
     }
 }
