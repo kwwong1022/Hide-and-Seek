@@ -8,6 +8,10 @@ import androidx.fragment.app.FragmentActivity;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
@@ -56,6 +60,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private FusedLocationProviderClient fusedLocationClient;
     private Location currLocation;
 
+    private SensorManager sensorManager;
+    private Sensor sensor_a;
+    private Sensor sensor_m;
+
+    private float heading = 0;
     private float hintDetectionRadius = 700;
     private boolean inHintArea = false;
     private boolean bossAreaFound = false;
@@ -66,6 +75,47 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private boolean isShieldAvailable;
     private boolean isCameraEnabled = true;
 
+    private SensorEventListener sensorEventListener = new SensorEventListener() {
+        private float[] values_a = new float[3]; // data from accelerometer sensor
+        private float[] values_m = new float[3]; // data from magnetic field sensor
+        private boolean aReady = false;
+        private boolean mReady = false;
+
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                values_a = event.values.clone();
+                aReady = true;
+            }
+            if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+                values_m = event.values.clone();
+                mReady = true;
+            }
+            if (aReady && mReady) {
+                calculateOrientation();
+                aReady = mReady = false;
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+        }
+
+        private void calculateOrientation() {
+            float[] values = new float[3];
+            float[] R = new float[9];
+            SensorManager.getRotationMatrix(R, null, values_a, values_m);
+            SensorManager.getOrientation(R, values);
+
+            values[0] = (float) Math.toDegrees(values[0]);
+            values[1] = (float) Math.toDegrees(values[1]);
+            values[2] = (float) Math.toDegrees(values[2]);
+
+            heading = values[0];
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -73,21 +123,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-
-        FloatingActionButton btn_camera = (FloatingActionButton) findViewById(R.id.btn_camera);
-        btn_camera.setOnClickListener(v -> {
-            ConstraintLayout mConstrainLayout  = (ConstraintLayout) findViewById(R.id.top_fragment);
-            ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
-
-            if (!isCameraEnabled){
-                lp.matchConstraintPercentHeight = (float) 1;
-            } else {
-                lp.matchConstraintPercentHeight = (float) 0;
-            }
-
-            mConstrainLayout.setLayoutParams(lp);
-            isCameraEnabled = !isCameraEnabled;
-        });
 
         // ======================================= location ========================================
         initLocationRequest();
@@ -135,11 +170,33 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             // modelNode.setOnTapListener((hitTestResult, motionEvent1) -> {});
         });
 
+        // ======================================== Sensor =========================================
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        sensor_a = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        sensor_m = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        if (sensor_a == null) Log.e(TAG, "onCreateView: accelerometer not detected");
+        if (sensor_m == null) Log.e(TAG, "onCreateView: magnetic field sensor not detected");
+
         // ========================================== UI ===========================================
         ConstraintLayout ui_background = findViewById(R.id.ui_background);
         FloatingActionButton btn_shoot = findViewById(R.id.btn_shoot);
         FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
+        FloatingActionButton btn_camera = (FloatingActionButton) findViewById(R.id.btn_camera);
         FloatingActionButton btn_map_focus = findViewById(R.id.btn_map_focus);
+
+        btn_camera.setOnClickListener(v -> {
+            ConstraintLayout mConstrainLayout  = (ConstraintLayout) findViewById(R.id.top_fragment);
+            ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
+
+            if (!isCameraEnabled){
+                lp.matchConstraintPercentHeight = (float) 1;
+            } else {
+                lp.matchConstraintPercentHeight = (float) 0;
+            }
+
+            mConstrainLayout.setLayoutParams(lp);
+            isCameraEnabled = !isCameraEnabled;
+        });
 
         btn_map_focus.setOnClickListener(v -> updateMapCamera(currLocation));
 
@@ -198,7 +255,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (location != null) {
             CameraPosition cameraPosition = new CameraPosition.Builder()
                     .target(new LatLng(location.getLatitude(), location.getLongitude()))
-                    .bearing(0)   // degrees clockwise from north
+                    .bearing(heading)   // degrees clockwise from north
                     .zoom(15).build();
             mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
@@ -248,13 +305,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markerLocation.setLatitude(markerLatLng.latitude);
         markerLocation.setLongitude(markerLatLng.longitude);
 
-        Log.i("Distance", String.valueOf(currLocation.distanceTo(markerLocation)));
+        Log.i(TAG, "Distance: " + String.valueOf(currLocation.distanceTo(markerLocation)));
     }
 
     // ==================================== activity life cycle ====================================
     @Override
     protected void onResume() {
         super.onResume();
+
+        if (sensor_a != null) sensorManager.registerListener(sensorEventListener, sensor_a, SensorManager.SENSOR_DELAY_UI);
+        if (sensor_m != null) sensorManager.registerListener(sensorEventListener, sensor_m, SensorManager.SENSOR_DELAY_UI);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             updateLocation();
@@ -265,6 +325,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     protected void onPause() {
+        if (sensor_a != null) sensorManager.unregisterListener(sensorEventListener, sensor_a);
+        if (sensor_m != null) sensorManager.unregisterListener(sensorEventListener, sensor_m);
+
         super.onPause();
     }
 

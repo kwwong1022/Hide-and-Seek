@@ -33,7 +33,8 @@
 
         <activity
             android:name=".MapsActivity"
-            android:label="@string/title_activity_maps">
+            android:label="@string/title_activity_maps"
+            android:screenOrientation="portrait">
         </activity>
 
         <meta-data android:name="com.google.ar.core" android:value="required" />
