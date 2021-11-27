@@ -145,8 +145,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 if (locationResult.getLastLocation().getSpeed()>5) updateMapCamera(currLocation);
 
                 if (hintMarker == null) {
-                    GenerateHint(currLocation);
                     mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));//this line repesent update map to player
+                    GenerateHint(currLocation);
+
                 }
                 else {
                     LatLng tempLatLng = hintMarker.getPosition();
@@ -339,7 +340,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         currentDistToHint = currLocation.distanceTo(markerLocation);
         DistText.setText(currentDistToHint/1000+" km");
 
-        Log.i(TAG, "Distance: " + String.valueOf(currLocation.distanceTo(markerLocation)));
+        Log.i(TAG, "Detection Radius In Meter: " + String.valueOf(hintDetectionRadius));
     }
 
     // ==================================== activity life cycle ====================================
