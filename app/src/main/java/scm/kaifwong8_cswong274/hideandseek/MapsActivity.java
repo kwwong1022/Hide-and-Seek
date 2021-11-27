@@ -53,7 +53,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int DIST_FAR = 6;
     // ==================================== =================== ====================================
 
-    private TextView DistText;
+    private TextView DistText, HintText;
 
     private GoogleMap mMap;
     private ArFragment arFragment;
@@ -131,6 +131,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mapFragment.getMapAsync(this);
         topFragment = (TopFragment) getSupportFragmentManager().findFragmentById(R.id.top_fragment);
         DistText = (TextView)topFragment.getView().findViewById(R.id.distTxt);
+        HintText = (TextView)topFragment.getView().findViewById(R.id.hintTxt);
         // ======================================= location ========================================
         initLocationRequest();
         locationCallBack = new LocationCallback() {
@@ -304,6 +305,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         hintMarker.remove();
         hintCircle.remove();
         currentHintNumber++;
+        HintText.setText(currentHintNumber+"");
         GenerateHint(currLocation);
     }
 
