@@ -76,7 +76,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private boolean bossAreaFound = false;
     private Circle hintCircle;
     private Marker playerMarker, hintMarker;
-
+    private CameraPosition cameraPosition;
     private boolean isShootAvailable;
     private boolean isShieldAvailable;
     private boolean isCameraEnabled = true;
@@ -146,6 +146,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 if (hintMarker == null) {
                     GenerateHint(currLocation);
+                    mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));//this line repesent update map to player
                 }
                 else {
                     LatLng tempLatLng = hintMarker.getPosition();
@@ -222,7 +223,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             isCameraEnabled = !isCameraEnabled;
         });
 
-        btn_map_focus.setOnClickListener(v -> updateMapCamera(currLocation));
+        btn_map_focus.setOnClickListener(v -> {
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));//this line repesent update map to player
+        });
 
         // must be the last func in onCreate
         updateLocation();
@@ -257,8 +260,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
-                updateMapUI(location);
                 updateMapCamera(location);
+                updateMapUI(location);
                 mMap.clear();
                 playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
@@ -277,11 +280,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private void updateMapCamera(Location location) {
         if (location != null) {
-            CameraPosition cameraPosition = new CameraPosition.Builder()
+             cameraPosition = new CameraPosition.Builder()
                     .target(new LatLng(location.getLatitude(), location.getLongitude()))
                     .bearing(heading)   // degrees clockwise from north
                     .zoom(15).build();
-            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+             //mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
     }
 
