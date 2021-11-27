@@ -15,6 +15,7 @@ import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -52,6 +53,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int DIST_FAR = 6;
     // ==================================== =================== ====================================
 
+    private TextView DistText;
+
     private GoogleMap mMap;
     private ArFragment arFragment;
     private ModelRenderable modelRenderable;
@@ -59,6 +62,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private LocationCallback locationCallBack;
     private FusedLocationProviderClient fusedLocationClient;
     private Location currLocation;
+    private int currentHintNumber;
+    private float currentDistToHint;
+    private TopFragment topFragment;
 
     private SensorManager sensorManager;
     private Sensor sensor_a;
@@ -123,7 +129,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-
+        topFragment = (TopFragment) getSupportFragmentManager().findFragmentById(R.id.top_fragment);
+        DistText = (TextView)topFragment.getView().findViewById(R.id.distTxt);
         // ======================================= location ========================================
         initLocationRequest();
         locationCallBack = new LocationCallback() {
@@ -133,9 +140,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 currLocation = locationResult.getLastLocation();
                 updateMapUI(currLocation);
+
                 if (locationResult.getLastLocation().getSpeed()>5) updateMapCamera(currLocation);
 
-                if (hintMarker == null) GenerateHint(currLocation);
+                if (hintMarker == null) {
+                    GenerateHint(currLocation);
+                }
+                else {
+                    LatLng tempLatLng = hintMarker.getPosition();
+                    Location tempLocation = new Location("");
+                    tempLocation.setLatitude(tempLatLng.latitude);
+                    tempLocation.setLongitude(tempLatLng.longitude);
+                    currentDistToHint = currLocation.distanceTo(tempLocation);
+
+                    DistText.setText(currentDistToHint/1000+" km");
+
+
+                    //DistText.setText(currentHintNumber);
+                }
+
             }
         };
 
@@ -278,6 +301,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapClick(@NonNull LatLng latLng) {
         Log.i("MapClick","Clicked Map");
+        hintMarker.remove();
+        hintCircle.remove();
+        currentHintNumber++;
         GenerateHint(currLocation);
     }
 
@@ -304,6 +330,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Location markerLocation = new Location("");
         markerLocation.setLatitude(markerLatLng.latitude);
         markerLocation.setLongitude(markerLatLng.longitude);
+
+        currentDistToHint = currLocation.distanceTo(markerLocation);
+        DistText.setText(currentDistToHint/1000+" km");
 
         Log.i(TAG, "Distance: " + String.valueOf(currLocation.distanceTo(markerLocation)));
     }

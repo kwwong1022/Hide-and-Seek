@@ -7,6 +7,7 @@ import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -23,7 +24,8 @@ public class TopFragment extends Fragment {
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
-
+    private TextView txt_hint;
+    private TextView txt_dist;
     public TopFragment() {
         // Required empty public constructor
     }
@@ -49,6 +51,10 @@ public class TopFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        txt_hint = getActivity().findViewById(R.id.hintTxt);
+        txt_dist = getActivity().findViewById(R.id.distTxt);
+
         if (getArguments() != null) {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
@@ -60,5 +66,9 @@ public class TopFragment extends Fragment {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_top, container, false);
+    }
+
+    public void ChangeDistTxt(String _content){
+        txt_dist.setText(_content);
     }
 }
