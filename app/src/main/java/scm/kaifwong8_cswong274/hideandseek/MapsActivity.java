@@ -54,7 +54,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     // ==================================== =================== ====================================
 
     private TextView DistText, HintText;
-
+    private boolean isInsideDetArea = false;
     private GoogleMap mMap;
     private ArFragment arFragment;
     private ModelRenderable modelRenderable;
@@ -156,7 +156,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     tempLocation.setLongitude(tempLatLng.longitude);
                     currentDistToHint = currLocation.distanceTo(tempLocation);
 
-                    DistText.setText(currentDistToHint/1000+" km");
+                    DistText.setText(currentDistToHint+" m");
 
 
                     //DistText.setText(currentHintNumber);
@@ -306,11 +306,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapClick(@NonNull LatLng latLng) {
         Log.i("MapClick","Clicked Map");
-        hintMarker.remove();
-        hintCircle.remove();
-        currentHintNumber++;
-        HintText.setText(currentHintNumber+"");
-        GenerateHint(currLocation);
+        if (currentDistToHint>hintDetectionRadius){
+            isInsideDetArea = false;
+        }
+        else {
+            isInsideDetArea = true;
+        }
+
+        if (isInsideDetArea){
+            hintMarker.remove();
+            hintCircle.remove();
+            currentHintNumber++;
+            HintText.setText(currentHintNumber+"");
+            GenerateHint(currLocation);
+            isInsideDetArea = false;
+        }
+        else {
+
+        }
+
     }
 
     public void GenerateHint(Location location) {
