@@ -3,19 +3,14 @@ package scm.kaifwong8_cswong274.hideandseek;
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
-import android.app.Fragment;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -42,25 +37,31 @@ import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, View.OnClickListener, GoogleMap.OnMapClickListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener {
     private static final String TAG = "MapsActivity";
     private static final int DEFAULT_UPDATE_INTERVAL = 5000;
     private static final int FAST_UPDATE_INTERVAL = 1000;
     private static final int FINE_LOCATION_REQUEST_CODE = 1;
+    private static final double METER_IN_LATLNG_DEG = 0.00000661131;
+    private static final int DIST_CLOSE = 1;
+    private static final int DIST_MEDIUM = 3;
+    private static final int DIST_FAR = 6;
     // ==================================== =================== ====================================
 
-    private Circle currentHintCircle;
     private GoogleMap mMap;
     private ArFragment arFragment;
     private ModelRenderable modelRenderable;
     private LocationRequest locationRequest;
     private LocationCallback locationCallBack;
     private FusedLocationProviderClient fusedLocationClient;
-    private Marker playerMarker;
-    private Marker currentHint;
     private Location currLocation;
-    private float meterInLatLongDeg = (float) 0.00000661131;
-    private float hintDetectectionRadius = 90;
+
+    private float hintDetectionRadius = 700;
+    private boolean inHintArea = false;
+    private boolean bossAreaFound = false;
+    private Circle hintCircle;
+    private Marker playerMarker, hintMarker;
+
     private boolean isShootAvailable;
     private boolean isShieldAvailable;
     private boolean isCameraEnabled = true;
@@ -72,24 +73,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-        FloatingActionButton CameraBtn = (FloatingActionButton) findViewById(R.id.btn_camera);
-        CameraBtn.setOnClickListener(v -> {
-            Log.i("Tag1","BtnCam");
-            if (!isCameraEnabled){
-                ConstraintLayout mConstrainLayout  = (ConstraintLayout) findViewById(R.id.top_fragment);
-                ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
-                lp.matchConstraintPercentHeight = (float) 1;
-                mConstrainLayout.setLayoutParams(lp);
-                isCameraEnabled = !isCameraEnabled;
-            }
-            else {
-                ConstraintLayout mConstrainLayout  = (ConstraintLayout) findViewById(R.id.top_fragment);
-                ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
-                lp.matchConstraintPercentHeight = (float) 0;
-                mConstrainLayout.setLayoutParams(lp);
-                isCameraEnabled = !isCameraEnabled;
 
+        FloatingActionButton btn_camera = (FloatingActionButton) findViewById(R.id.btn_camera);
+        btn_camera.setOnClickListener(v -> {
+            ConstraintLayout mConstrainLayout  = (ConstraintLayout) findViewById(R.id.top_fragment);
+            ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
+
+            if (!isCameraEnabled){
+                lp.matchConstraintPercentHeight = (float) 1;
+            } else {
+                lp.matchConstraintPercentHeight = (float) 0;
             }
+
+            mConstrainLayout.setLayoutParams(lp);
+            isCameraEnabled = !isCameraEnabled;
         });
 
         // ======================================= location ========================================
@@ -101,14 +98,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 currLocation = locationResult.getLastLocation();
                 updateMapUI(currLocation);
-                if (locationResult.getLastLocation().getSpeed()>5) {
-                    updateMapCamera(currLocation);
-                }
-                if (currentHint == null) {
-                    GenerateHint((float) currLocation.getLatitude(),(float)currLocation.getLongitude());//gen first hint
-                }
+                if (locationResult.getLastLocation().getSpeed()>5) updateMapCamera(currLocation);
+
+                if (hintMarker == null) GenerateHint(currLocation);
             }
         };
+
         // ========================================== AR ===========================================
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.sceneform_fragment);
 
@@ -140,28 +135,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             // modelNode.setOnTapListener((hitTestResult, motionEvent1) -> {});
         });
 
-
-
-
         // ========================================== UI ===========================================
         ConstraintLayout ui_background = findViewById(R.id.ui_background);
         FloatingActionButton btn_shoot = findViewById(R.id.btn_shoot);
         FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
-        FloatingActionButton btn_camera = findViewById(R.id.btn_camera);
         FloatingActionButton btn_map_focus = findViewById(R.id.btn_map_focus);
 
-        btn_map_focus.setOnClickListener(v -> {
-            updateMapCamera(currLocation);
-        });
+        btn_map_focus.setOnClickListener(v -> updateMapCamera(currLocation));
 
         // must be the last func in onCreate
         updateLocation();
     }
-
-
-
-
-
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -194,21 +178,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
                 updateMapUI(location);
                 updateMapCamera(location);
+                mMap.clear();
+                playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
             });
-        } else {
-            ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_REQUEST_CODE);
-        }
+        } else { ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_REQUEST_CODE); }
     }
 
     private void updateMapUI(Location location) {
-        //mMap.clear();
-        if (location !=null && playerMarker == null){
-            playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
-                    .icon(BitmapDescriptorFactory
-                            .defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
-            );
-
-        }
         if (location != null && playerMarker!= null) {
             //.title("")
             //.icon(BitmapDescriptorFactory.fromResource(R.drawable.marker_user))
@@ -222,7 +199,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             CameraPosition cameraPosition = new CameraPosition.Builder()
                     .target(new LatLng(location.getLatitude(), location.getLongitude()))
                     .bearing(0)   // degrees clockwise from north
-                    .zoom(17).build();
+                    .zoom(15).build();
             mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
     }
@@ -230,21 +207,49 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        mMap.setOnMapClickListener(this);
 
         try {
             boolean success = mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this, R.raw.mapstyle));
             if (!success) Log.e(TAG, "Style parsing failed.");
         } catch (Exception e) { Log.e(TAG, "Can't find style. Error: ", e); }
 
-        mMap.setOnMapClickListener(this);
-
         updateLocation();
-
+        mMap.clear();
     }
 
+    @Override
+    public void onMapClick(@NonNull LatLng latLng) {
+        Log.i("MapClick","Clicked Map");
+        GenerateHint(currLocation);
+    }
 
+    public void GenerateHint(Location location) {
+        int negFactor = Math.random()>0.5? -1:1;
+        float rngLat = (float) ((DIST_CLOSE + Math.random()) * (hintDetectionRadius * METER_IN_LATLNG_DEG * (1 + Math.random())) * negFactor);
+        negFactor = Math.random()>0.5? -1:1;
+        float rngLong = (float) ((DIST_CLOSE + Math.random()) * (hintDetectionRadius * METER_IN_LATLNG_DEG * (1 + Math.random())) * negFactor);
 
+        LatLng rngPos = new LatLng(location.getLatitude() + rngLat, location.getLongitude() +rngLong);
+        MarkerOptions markerOptions = new MarkerOptions();
+        markerOptions.position(rngPos);
+        hintMarker = mMap.addMarker(markerOptions);
 
+        CircleOptions circleOptions = new CircleOptions();
+        circleOptions.center(new LatLng(currLocation.getLatitude() + rngLat,currLocation.getLongitude() +rngLong));
+        circleOptions.radius(hintDetectionRadius);
+        circleOptions.fillColor(Color.argb(64,240,240,240));
+        circleOptions.strokeColor(Color.argb(255,240,240,240));
+        circleOptions.strokeWidth(6);
+        hintCircle = mMap.addCircle(circleOptions);
+
+        LatLng markerLatLng = hintMarker.getPosition();
+        Location markerLocation = new Location("");
+        markerLocation.setLatitude(markerLatLng.latitude);
+        markerLocation.setLongitude(markerLatLng.longitude);
+
+        Log.i("Distance", String.valueOf(currLocation.distanceTo(markerLocation)));
+    }
 
     // ==================================== activity life cycle ====================================
     @Override
@@ -271,49 +276,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         super.onDestroy();
-    }
-
-    @Override
-    public void onClick(View v) {
-        switch (v.getId()){
-            case R.id.btn_camera:
-                Log.i("Tag1","BtnCam");
-                break;
-        }
-
-    }
-
-    @Override
-    public void onMapClick(@NonNull LatLng latLng) {
-        Log.i("MapClick","Clicked Map");
-        GenerateHint((float) currLocation.getLatitude(),(float)currLocation.getLongitude());
-    }
-
-    public void GenerateHint(float _Lat,float _Long){
-        float rngLat = (float) ((1+Math.random()) * ((hintDetectectionRadius*meterInLatLongDeg)));
-        float rngLong = (float) ((1+Math.random()) * ((hintDetectectionRadius*meterInLatLongDeg)));
-
-        LatLng rngPos = new LatLng(_Lat + rngLat, _Long +rngLong);
-        // Creating a marker
-        MarkerOptions markerOptions = new MarkerOptions();
-        // Setting the position for the marker
-        markerOptions.position(rngPos);
-        currentHint = mMap.addMarker(markerOptions);
-
-        CircleOptions circleOptions = new CircleOptions();
-        circleOptions.center(new LatLng(currLocation.getLatitude() + rngLat,currLocation.getLongitude() +rngLong));
-        circleOptions.radius(hintDetectectionRadius);
-        circleOptions.fillColor(Color.argb(60,140,40,50));
-        circleOptions.strokeColor(Color.GREEN);
-        circleOptions.strokeWidth(6);
-        currentHintCircle = mMap.addCircle(circleOptions);
-
-        LatLng markerLatLng = currentHint.getPosition();
-        Location markerLocation = new Location("");
-        markerLocation.setLatitude(markerLatLng.latitude);
-        markerLocation.setLongitude(markerLatLng.longitude);
-
-        Log.i("Distance", String.valueOf(currLocation.distanceTo(markerLocation)));
     }
 }
 
