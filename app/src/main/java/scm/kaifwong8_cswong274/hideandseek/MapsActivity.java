@@ -63,6 +63,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private FusedLocationProviderClient fusedLocationClient;
     private Location currLocation;
     private int currentHintNumber;
+    private int hintNumberNeeded = 3;
     private float currentDistToHint;
     private TopFragment topFragment;
 
@@ -132,6 +133,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         topFragment = (TopFragment) getSupportFragmentManager().findFragmentById(R.id.top_fragment);
         DistText = (TextView)topFragment.getView().findViewById(R.id.distTxt);
         HintText = (TextView)topFragment.getView().findViewById(R.id.hintTxt);
+        HintText.setText(currentHintNumber+"/"+hintNumberNeeded);
         // ======================================= location ========================================
         initLocationRequest();
         locationCallBack = new LocationCallback() {
@@ -304,7 +306,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     @Override
-    public void onMapClick(@NonNull LatLng latLng) {
+    public void onMapClick(@NonNull LatLng latLng) {//On map click is the testing function for AR clicking hints and AR clicking boss
         Log.i("MapClick","Clicked Map");
         if (currentDistToHint>hintDetectionRadius){
             isInsideDetArea = false;
@@ -316,9 +318,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (isInsideDetArea){
             hintMarker.remove();
             hintCircle.remove();
-            currentHintNumber++;
-            HintText.setText(currentHintNumber+"");
-            GenerateHint(currLocation);
+            if (!bossAreaFound){
+                currentHintNumber++;
+                if (currentHintNumber >= hintNumberNeeded){
+                    bossAreaFound = true;
+                    HintText.setTextColor(Color.RED);
+                }
+                else {
+                    bossAreaFound = false;
+                    HintText.setTextColor(Color.WHITE);
+                }
+                HintText.setText(currentHintNumber+"/"+hintNumberNeeded);
+                GenerateHint(currLocation);
+            }
+            else {
+                //BossFight
+            }
+
+
             isInsideDetArea = false;
         }
         else {
@@ -341,9 +358,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         CircleOptions circleOptions = new CircleOptions();
         circleOptions.center(new LatLng(currLocation.getLatitude() + rngLat,currLocation.getLongitude() +rngLong));
         circleOptions.radius(hintDetectionRadius);
-        circleOptions.fillColor(Color.argb(64,240,240,240));
-        circleOptions.strokeColor(Color.argb(255,240,240,240));
-        circleOptions.strokeWidth(6);
+        if (!bossAreaFound){
+            circleOptions.fillColor(Color.argb(64,240,240,240));
+            circleOptions.strokeColor(Color.argb(255,240,240,240));
+            circleOptions.strokeWidth(6);
+        }
+        else {
+            circleOptions.fillColor(Color.argb(64,240,20,20));
+            circleOptions.strokeColor(Color.argb(255,240,240,240));
+            circleOptions.strokeWidth(10);
+        }
+
         hintCircle = mMap.addCircle(circleOptions);
 
         LatLng markerLatLng = hintMarker.getPosition();
