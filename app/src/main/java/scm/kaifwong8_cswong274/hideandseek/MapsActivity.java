@@ -123,11 +123,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     };
 
-    /** AR VAR */
+    /** AR VAR & FUNCTIONS */
     private final int HINT_INDEX = 0, BOSS_INDEX = 1;
     private final int[] models = {R.raw.frog, R.raw.andy};
     private final String[] modelNames = {"Hint", "Boss"};
     private ModelRenderable[] renderables = new ModelRenderable[models.length];
+
+    private TransformableNode hintNode, bossNode;
 
     private void loadModels() {
         for (int i=0; i<models.length; i++) {
@@ -145,7 +147,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
+    private void removeNode(Node node) {
+        AnchorNode parent = (AnchorNode)node.getParent();
+        parent.getAnchor().detach();
 
+        parent.removeChild(node);
+        scene.removeChild(parent);
+    }
     /** END */
 
     @Override
