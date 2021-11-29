@@ -3,6 +3,7 @@ package scm.kaifwong8_cswong274.hideandseek;
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
@@ -37,10 +38,21 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.ar.core.Anchor;
+import com.google.ar.core.Camera;
+import com.google.ar.core.Frame;
+import com.google.ar.core.TrackingState;
 import com.google.ar.sceneform.AnchorNode;
+import com.google.ar.sceneform.FrameTime;
+import com.google.ar.sceneform.HitTestResult;
+import com.google.ar.sceneform.Node;
+import com.google.ar.sceneform.Scene;
+import com.google.ar.sceneform.collision.Ray;
+import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
+
+import java.util.Calendar;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener {
     private static final String TAG = "MapsActivity";
@@ -54,6 +66,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     // services instance
     private GoogleMap mMap;
     private ArFragment arFragment;
+    private Scene scene;
     private ModelRenderable modelRenderable;
     private LocationRequest locationRequest;
     private LocationCallback locationCallBack;
@@ -122,7 +135,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     };
 
     /** AR VAR */
-    private final int ANDY_INDEX = 0, HOUSE_INDEX = 1;
+    private final int HINT_INDEX = 0, BOSS_INDEX = 1;
+    private int[] models = {R.raw.frog, R.raw.andy};
+    private String[] modelNames = {"Hint", "Boss"};
+    private ModelRenderable[] renderables = new ModelRenderable[models.length];
+
+    private void loadModels() {
+        for (int i=0; i<models.length; i++) {
+            int finalIndex = i;
+            ModelRenderable.builder()
+                    .setSource(this, models[finalIndex])
+                    .setIsFilamentGltf(true)
+                    .build()
+                    .thenAccept(renderable -> renderables[finalIndex] = renderable)
+                    .exceptionally(
+                            throwable -> {
+                                Log.e(TAG, "Unable to load Renderable", throwable);
+                                return null;
+                            });
+        }
+    }
+
+
     /** END */
 
     @Override
@@ -177,36 +211,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         };
 
-        // ========================================== AR ===========================================
+        /**========================================== AR =========================================*/
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.sceneform_fragment);
+        scene = arFragment.getArSceneView().getScene();
 
-        ModelRenderable.builder()
-                .setSource(this, R.raw.dog_standing)
-                .setIsFilamentGltf(true)
-                .build() // returns a completableFuture
-                .thenAccept(renderable -> modelRenderable = renderable)
-                .exceptionally(throwable -> {
-                    Log.d(TAG, "Model Renderable: unable to load Renderable", throwable);
-                    return null;
-                });
+        loadModels();
 
-        arFragment.setOnTapArPlaneListener((hitResult, plane, motionEvent) -> {
-            // if (modelRenderable == null) return;
-
-            Anchor anchor = hitResult.createAnchor();
-            AnchorNode anchorNode = new AnchorNode(anchor);
-            anchorNode.setParent(arFragment.getArSceneView().getScene());
-
-            TransformableNode modelNode = new TransformableNode(arFragment.getTransformationSystem());
-            modelNode.setParent(anchorNode);
-            modelNode.setRenderable(modelRenderable);
-
-            arFragment.getArSceneView().getScene().addChild(anchorNode);
-
-            modelNode.select();
-
-            // modelNode.setOnTapListener((hitTestResult, motionEvent1) -> {});
-        });
+        // btn_shoot.setOnClickListener(v -> shoot());
+        // btn_shield.setOnClickListener(v -> defence());
+        /**========================================== AR =========================================*/
 
         // ======================================== Sensor =========================================
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
@@ -220,18 +233,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             ConstraintLayout mConstrainLayout  = (ConstraintLayout) findViewById(R.id.top_fragment);
             ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
 
-            if (!isCameraEnabled){
-                lp.matchConstraintPercentHeight = (float) 1;
-            } else {
-                lp.matchConstraintPercentHeight = (float) 0;
-            }
-
+            lp.matchConstraintPercentHeight = !isCameraEnabled? (float)1:(float)0;
             mConstrainLayout.setLayoutParams(lp);
             isCameraEnabled = !isCameraEnabled;
         });
 
         btn_map_focus.setOnClickListener(v -> {
-            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));//this line repesent update map to player
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));   //this line represent update map to player
         });
 
         // must be the last func in onCreate
