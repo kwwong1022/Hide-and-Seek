@@ -51,11 +51,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int DIST_CLOSE = 1;
     private static final int DIST_MEDIUM = 3;
     private static final int DIST_FAR = 6;
-
-    // ==================================== =================== ====================================
-
-    private TextView DistText, HintText;
-    private boolean isInsideDetArea = false;
+    // services instance
     private GoogleMap mMap;
     private ArFragment arFragment;
     private ModelRenderable modelRenderable;
@@ -63,29 +59,32 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private LocationCallback locationCallBack;
     private FusedLocationProviderClient fusedLocationClient;
     private Location currLocation;
-    private int currentHintNumber;
-    private int hintNumberNeeded = 3;
-    private float currentDistToHint;
-    private TopFragment topFragment;
-
     private SensorManager sensorManager;
     private Sensor sensor_a;
     private Sensor sensor_m;
+    // view
+    private TopFragment topFragment;
+    private TextView DistText, HintText;
+    private AimView aimView;
 
     private float heading = 0;
+    private int currentHintNumber;
+    private int hintNumberNeeded = 3;
+    private float currentDistToHint;
     private float hintDetectionRadius = 700;
     private boolean inHintArea = false;
     private boolean bossAreaFound = false;
+    private boolean isInsideDetArea = false;
     private Circle hintCircle;
     private Marker playerMarker, hintMarker;
+
     private CameraPosition cameraPosition;
-    private boolean isShootAvailable;
-    private boolean isShieldAvailable;
+    private boolean isShootAvailable, isShieldAvailable;
     private boolean isCameraEnabled = true;
 
     private SensorEventListener sensorEventListener = new SensorEventListener() {
-        private float[] values_a = new float[3]; // data from accelerometer sensor
-        private float[] values_m = new float[3]; // data from magnetic field sensor
+        private float[] values_a = new float[3];
+        private float[] values_m = new float[3];
         private boolean aReady = false;
         private boolean mReady = false;
 
@@ -131,6 +130,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        // init view
         ConstraintLayout ui_background = findViewById(R.id.ui_background);
         FloatingActionButton btn_shoot = findViewById(R.id.btn_shoot);
         FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
@@ -140,7 +140,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         DistText = (TextView)topFragment.getView().findViewById(R.id.distTxt);
         HintText = (TextView)topFragment.getView().findViewById(R.id.hintTxt);
 
-        HintText.setText(currentHintNumber+"/"+hintNumberNeeded);
+        HintText.setText(currentHintNumber+"/"+hintNumberNeeded);   // move to other place? generate hint?
+
+        ConstraintLayout aimViewContainer = findViewById(R.id.aim_view_container);
+        this.aimView = new AimView(this);
+        aimViewContainer.addView(aimView);
 
         // ======================================= location ========================================
         initLocationRequest();
