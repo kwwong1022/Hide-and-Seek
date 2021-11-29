@@ -60,21 +60,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private FusedLocationProviderClient fusedLocationClient;
     private Location currLocation;
     private SensorManager sensorManager;
-    private Sensor sensor_a;
-    private Sensor sensor_m;
+    private Sensor sensor_a, sensor_m;
     // view
     private TopFragment topFragment;
     private TextView DistText, HintText;
     private AimView aimView;
+    private StatusView statusView;
 
     private float heading = 0;
     private int currentHintNumber;
     private int hintNumberNeeded = 3;
     private float currentDistToHint;
     private float hintDetectionRadius = 700;
-    private boolean inHintArea = false;
-    private boolean bossAreaFound = false;
-    private boolean isInsideDetArea = false;
+    private boolean inHintArea, bossAreaFound, isInsideDetArea = false;
     private Circle hintCircle;
     private Marker playerMarker, hintMarker;
 
@@ -122,6 +120,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             heading = values[0];
         }
     };
+
+    /** AR VAR */
+    private final int ANDY_INDEX = 0, HOUSE_INDEX = 1;
+    /** END */
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

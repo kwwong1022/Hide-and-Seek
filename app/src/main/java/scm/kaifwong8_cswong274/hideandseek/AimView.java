@@ -4,12 +4,9 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.util.Log;
 import android.view.View;
 
 public class AimView extends View {
-    private static final String TAG = "AimView";
-
     private boolean first;
     private Paint paint;
     private float width, height;
@@ -42,7 +39,5 @@ public class AimView extends View {
         canvas.drawLine(width/2, 0, width/2, height, paint);
         canvas.drawLine(0, height/2, width, height/2, paint);
         canvas.drawCircle(width/2, height/2, width/2 - width/10, paint);
-
-        //canvas.drawColor(Color.RED);
     }
 }
