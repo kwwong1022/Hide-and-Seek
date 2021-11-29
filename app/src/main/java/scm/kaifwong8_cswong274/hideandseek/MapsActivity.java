@@ -56,13 +56,10 @@ import java.util.Calendar;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener {
     private static final String TAG = "MapsActivity";
-    private static final int DEFAULT_UPDATE_INTERVAL = 5000;
-    private static final int FAST_UPDATE_INTERVAL = 1000;
+    private static final int DEFAULT_UPDATE_INTERVAL = 5000, FAST_UPDATE_INTERVAL = 1000;
     private static final int FINE_LOCATION_REQUEST_CODE = 1;
+    private static final int DIST_CLOSE = 1, DIST_MEDIUM = 3, DIST_FAR = 6;
     private static final double METER_IN_LATLNG_DEG = 0.00000661131;
-    private static final int DIST_CLOSE = 1;
-    private static final int DIST_MEDIUM = 3;
-    private static final int DIST_FAR = 6;
     // services instance
     private GoogleMap mMap;
     private ArFragment arFragment;
@@ -90,14 +87,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Marker playerMarker, hintMarker;
 
     private CameraPosition cameraPosition;
-    private boolean isShootAvailable, isShieldAvailable;
     private boolean isCameraEnabled = true;
+    private boolean isShootAvailable, isShieldAvailable;
 
     private SensorEventListener sensorEventListener = new SensorEventListener() {
-        private float[] values_a = new float[3];
-        private float[] values_m = new float[3];
-        private boolean aReady = false;
-        private boolean mReady = false;
+        private float[] values_a = new float[3], values_m = new float[3];
+        private boolean aReady = false, mReady = false;
 
         @Override
         public void onSensorChanged(SensorEvent event) {
@@ -116,28 +111,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-        }
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
         private void calculateOrientation() {
             float[] values = new float[3];
             float[] R = new float[9];
             SensorManager.getRotationMatrix(R, null, values_a, values_m);
             SensorManager.getOrientation(R, values);
-
             values[0] = (float) Math.toDegrees(values[0]);
-            values[1] = (float) Math.toDegrees(values[1]);
-            values[2] = (float) Math.toDegrees(values[2]);
-
             heading = values[0];
         }
     };
 
     /** AR VAR */
     private final int HINT_INDEX = 0, BOSS_INDEX = 1;
-    private int[] models = {R.raw.frog, R.raw.andy};
-    private String[] modelNames = {"Hint", "Boss"};
+    private final int[] models = {R.raw.frog, R.raw.andy};
+    private final String[] modelNames = {"Hint", "Boss"};
     private ModelRenderable[] renderables = new ModelRenderable[models.length];
 
     private void loadModels() {
@@ -176,13 +165,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         DistText = (TextView)topFragment.getView().findViewById(R.id.distTxt);
         HintText = (TextView)topFragment.getView().findViewById(R.id.hintTxt);
 
-        HintText.setText(currentHintNumber+"/"+hintNumberNeeded);   // move to other place? generate hint?
+        HintText.setText(currentHintNumber + "/" + hintNumberNeeded);   // move to other place? generate hint?
 
         ConstraintLayout aimViewContainer = findViewById(R.id.aim_view_container);
         this.aimView = new AimView(this);
         aimViewContainer.addView(aimView);
 
-        // ======================================= location ========================================
+        // Location
         initLocationRequest();
         locationCallBack = new LocationCallback() {
             @Override
@@ -191,21 +180,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 currLocation = locationResult.getLastLocation();
                 updateMarker(playerMarker, currLocation);
 
-                if (locationResult.getLastLocation().getSpeed()>5) updateMapCamera(currLocation);
+                if (locationResult.getLastLocation().getSpeed() > 5) updateMapCamera(currLocation);
 
                 if (hintMarker == null) {
                     mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));   //this line represent update map to player <- === updateMapCamera(currLocation);?
                     GenerateHint(currLocation);
-                }
-                else {
+                }else {
                     LatLng tempLatLng = hintMarker.getPosition();
                     Location tempLocation = new Location("");
                     tempLocation.setLatitude(tempLatLng.latitude);
                     tempLocation.setLongitude(tempLatLng.longitude);
 
                     currentDistToHint = currLocation.distanceTo(tempLocation);
-                    DistText.setText(currentDistToHint+" m");
-
+                    DistText.setText(currentDistToHint + " m");
                     //DistText.setText(currentHintNumber);
                 }
             }
@@ -221,16 +208,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // btn_shield.setOnClickListener(v -> defence());
         /**========================================== AR =========================================*/
 
-        // ======================================== Sensor =========================================
+        // Sensor
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         sensor_a = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         sensor_m = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         if (sensor_a == null) Log.e(TAG, "onCreateView: accelerometer not detected");
         if (sensor_m == null) Log.e(TAG, "onCreateView: magnetic field sensor not detected");
 
-        // ========================================== UI ===========================================
+        // UI
         btn_camera.setOnClickListener(v -> {
-            ConstraintLayout mConstrainLayout  = (ConstraintLayout) findViewById(R.id.top_fragment);
+            ConstraintLayout mConstrainLayout = (ConstraintLayout) findViewById(R.id.top_fragment);
             ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
 
             lp.matchConstraintPercentHeight = !isCameraEnabled? (float)1:(float)0;
@@ -238,9 +225,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             isCameraEnabled = !isCameraEnabled;
         });
 
-        btn_map_focus.setOnClickListener(v -> {
-            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));   //this line represent update map to player
-        });
+        btn_map_focus.setOnClickListener(v -> mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition)) );
 
         // must be the last func in onCreate
         updateLocation();
@@ -328,21 +313,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Log.i(TAG,"Map clicked");
         if (currentDistToHint>hintDetectionRadius){
             isInsideDetArea = false;
-        }
-        else {
+        } else {
             isInsideDetArea = true;
         }
 
         if (isInsideDetArea){
             hintMarker.remove();
             hintCircle.remove();
+
             if (!bossAreaFound){
                 currentHintNumber++;
                 if (currentHintNumber >= hintNumberNeeded){
                     bossAreaFound = true;
                     HintText.setTextColor(Color.RED);
-                }
-                else {
+                } else {
                     bossAreaFound = false;
                     HintText.setTextColor(Color.WHITE);
                 }
@@ -358,7 +342,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         else {
 
         }
-
     }
 
     public void GenerateHint(Location location) {
@@ -402,7 +385,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Log.i(TAG, "Detection Radius In Meter: " + String.valueOf(hintDetectionRadius));
     }
 
-    // ==================================== activity life cycle ====================================
+    // Activity life cycle
     @Override
     protected void onResume() {
         super.onResume();
