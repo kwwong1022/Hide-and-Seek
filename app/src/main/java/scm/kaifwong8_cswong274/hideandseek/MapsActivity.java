@@ -51,6 +51,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int DIST_CLOSE = 1;
     private static final int DIST_MEDIUM = 3;
     private static final int DIST_FAR = 6;
+
     // ==================================== =================== ====================================
 
     private TextView DistText, HintText;
@@ -130,40 +131,43 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        ConstraintLayout ui_background = findViewById(R.id.ui_background);
+        FloatingActionButton btn_shoot = findViewById(R.id.btn_shoot);
+        FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
+        FloatingActionButton btn_camera = (FloatingActionButton) findViewById(R.id.btn_camera);
+        FloatingActionButton btn_map_focus = findViewById(R.id.btn_map_focus);
         topFragment = (TopFragment) getSupportFragmentManager().findFragmentById(R.id.top_fragment);
         DistText = (TextView)topFragment.getView().findViewById(R.id.distTxt);
         HintText = (TextView)topFragment.getView().findViewById(R.id.hintTxt);
+
         HintText.setText(currentHintNumber+"/"+hintNumberNeeded);
+
         // ======================================= location ========================================
         initLocationRequest();
         locationCallBack = new LocationCallback() {
             @Override
             public void onLocationResult(@NonNull LocationResult locationResult) {
                 super.onLocationResult(locationResult);
-
                 currLocation = locationResult.getLastLocation();
-                updateMapUI(currLocation);
+                updateMarker(playerMarker, currLocation);
 
                 if (locationResult.getLastLocation().getSpeed()>5) updateMapCamera(currLocation);
 
                 if (hintMarker == null) {
-                    mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));//this line repesent update map to player
+                    mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));   //this line represent update map to player <- === updateMapCamera(currLocation);?
                     GenerateHint(currLocation);
-
                 }
                 else {
                     LatLng tempLatLng = hintMarker.getPosition();
                     Location tempLocation = new Location("");
                     tempLocation.setLatitude(tempLatLng.latitude);
                     tempLocation.setLongitude(tempLatLng.longitude);
+
                     currentDistToHint = currLocation.distanceTo(tempLocation);
-
                     DistText.setText(currentDistToHint+" m");
-
 
                     //DistText.setText(currentHintNumber);
                 }
-
             }
         };
 
@@ -206,12 +210,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (sensor_m == null) Log.e(TAG, "onCreateView: magnetic field sensor not detected");
 
         // ========================================== UI ===========================================
-        ConstraintLayout ui_background = findViewById(R.id.ui_background);
-        FloatingActionButton btn_shoot = findViewById(R.id.btn_shoot);
-        FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
-        FloatingActionButton btn_camera = (FloatingActionButton) findViewById(R.id.btn_camera);
-        FloatingActionButton btn_map_focus = findViewById(R.id.btn_map_focus);
-
         btn_camera.setOnClickListener(v -> {
             ConstraintLayout mConstrainLayout  = (ConstraintLayout) findViewById(R.id.top_fragment);
             ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
@@ -264,20 +262,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
                 updateMapCamera(location);
-                updateMapUI(location);
+                updateMarker(playerMarker, location);
                 mMap.clear();
                 playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+
             });
         } else { ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_REQUEST_CODE); }
     }
 
-    private void updateMapUI(Location location) {
-        if (location != null && playerMarker!= null) {
+    private void updateMarker(Marker marker, Location location) {
+        if (location != null && marker!= null) {
             //.title("")
             //.icon(BitmapDescriptorFactory.fromResource(R.drawable.marker_user))
-            playerMarker.showInfoWindow();
-            playerMarker.setPosition(new LatLng(location.getLatitude(), location.getLongitude()));
+            marker.showInfoWindow();
+            marker.setPosition(new LatLng(location.getLatitude(), location.getLongitude()));
         }
     }
 
@@ -287,7 +286,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     .target(new LatLng(location.getLatitude(), location.getLongitude()))
                     .bearing(heading)   // degrees clockwise from north
                     .zoom(15).build();
-             //mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+             mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
     }
 
@@ -301,13 +300,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             if (!success) Log.e(TAG, "Style parsing failed.");
         } catch (Exception e) { Log.e(TAG, "Can't find style. Error: ", e); }
 
+        mMap.getUiSettings().setCompassEnabled(false);
+        mMap.getUiSettings().setAllGesturesEnabled(true);
+        mMap.setBuildingsEnabled(false);
+        mMap.setTrafficEnabled(false);
+
         updateLocation();
         mMap.clear();
     }
 
     @Override
-    public void onMapClick(@NonNull LatLng latLng) {//On map click is the testing function for AR clicking hints and AR clicking boss
-        Log.i("MapClick","Clicked Map");
+    public void onMapClick(@NonNull LatLng latLng) {   //On map click is the testing function for AR clicking hints and AR clicking boss
+        Log.i(TAG,"Map clicked");
         if (currentDistToHint>hintDetectionRadius){
             isInsideDetArea = false;
         }
@@ -335,7 +339,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 //BossFight
             }
 
-
             isInsideDetArea = false;
         }
         else {
@@ -354,10 +357,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         MarkerOptions markerOptions = new MarkerOptions();
         markerOptions.position(rngPos);
         hintMarker = mMap.addMarker(markerOptions);
+        hintMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.marker_none));
+        hintMarker.setTitle("!!!");
 
         CircleOptions circleOptions = new CircleOptions();
         circleOptions.center(new LatLng(currLocation.getLatitude() + rngLat,currLocation.getLongitude() +rngLong));
         circleOptions.radius(hintDetectionRadius);
+
         if (!bossAreaFound){
             circleOptions.fillColor(Color.argb(64,240,240,240));
             circleOptions.strokeColor(Color.argb(255,240,240,240));
