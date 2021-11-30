@@ -128,9 +128,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     /** AR VAR & FUNCTIONS */
     private ArFragment arFragment;
     private Scene scene;
-    private final int HINT_INDEX = 0, BOSS_INDEX = 1;
-    private final int[] models = {R.raw.frog, R.raw.andy};
-    private final String[] modelNames = {"Hint", "Boss"};
+    private final int HINT_INDEX = 0, BOSS_INDEX = 1, BULLET_INDEX = 2, SHIELD_INDEX = 3;
+    private final int[] models = {R.raw.frog, R.raw.andy, R.raw.origami_fish, R.raw.dog_standing};
+    private final String[] modelNames = {"Hint", "Boss", "Bullet", "Shield"};
     private ModelRenderable[] renderables = new ModelRenderable[models.length];
 
     private TransformableNode hintNode, bossNode;
