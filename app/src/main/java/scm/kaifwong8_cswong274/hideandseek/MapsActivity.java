@@ -55,6 +55,8 @@ import com.google.ar.sceneform.ux.TransformableNode;
 
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener {
     private static final String TAG = "MapsActivity";
@@ -82,7 +84,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private int hintNumberNeeded = 3;
     private float currentDistToHint;
     private float hintDetectionRadius = 700;
-    private boolean inHintArea, bossAreaFound, isInsideDetArea = false;
+    private boolean bossAreaFound, isInsideDetArea = false;
     private Circle hintCircle;
     private Marker playerMarker, hintMarker;
 
@@ -196,7 +198,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 if (hintMarker == null) {
                     mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));   //this line represent update map to player <- === updateMapCamera(currLocation);?
                     GenerateHint(currLocation);
-                }else {
+                } else {
                     LatLng tempLatLng = hintMarker.getPosition();
                     Location tempLocation = new Location("");
                     tempLocation.setLatitude(tempLatLng.latitude);
@@ -238,7 +240,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         });
 
         // btn_shoot.setOnClickListener(v -> shoot());
-        //btn_shoot.setOnClickListener(v -> bossNode.);
+        // btn_shoot.setOnClickListener(v -> ((BossNode)bossNode).updateFacingDirection());
         // btn_shield.setOnClickListener(v -> defence());
         /**========================================== AR =========================================*/
 
@@ -299,15 +301,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 mMap.clear();
                 playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-
             });
         } else { ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_REQUEST_CODE); }
     }
 
     private void updateMarker(Marker marker, Location location) {
         if (location != null && marker!= null) {
-            //.title("")
-            //.icon(BitmapDescriptorFactory.fromResource(R.drawable.marker_user))
             marker.showInfoWindow();
             marker.setPosition(new LatLng(location.getLatitude(), location.getLongitude()));
         }
@@ -345,11 +344,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapClick(@NonNull LatLng latLng) {   //On map click is the testing function for AR clicking hints and AR clicking boss
         Log.i(TAG,"Map clicked");
-        if (currentDistToHint>hintDetectionRadius){
-            isInsideDetArea = false;
-        } else {
-            isInsideDetArea = true;
-        }
+
+        // update hint on map
+        isInsideDetArea = currentDistToHint>hintDetectionRadius? false:true;
 
         if (isInsideDetArea){
             hintMarker.remove();
@@ -366,8 +363,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 }
                 HintText.setText(currentHintNumber+"/"+hintNumberNeeded);
                 GenerateHint(currLocation);
-            }
-            else {
+            } else {
                 //BossFight
             }
 
@@ -399,8 +395,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             circleOptions.fillColor(Color.argb(64,240,240,240));
             circleOptions.strokeColor(Color.argb(255,240,240,240));
             circleOptions.strokeWidth(6);
-        }
-        else {
+        } else {
             circleOptions.fillColor(Color.argb(64,240,20,20));
             circleOptions.strokeColor(Color.argb(255,240,240,240));
             circleOptions.strokeWidth(10);
@@ -414,9 +409,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markerLocation.setLongitude(markerLatLng.longitude);
 
         currentDistToHint = currLocation.distanceTo(markerLocation);
-        DistText.setText(currentDistToHint/1000+" km");
+        DistText.setText(currentDistToHint/1000 + " km");
 
-        Log.i(TAG, "Detection Radius In Meter: " + String.valueOf(hintDetectionRadius));
+        Log.i(TAG, "Detection Radius In Meter: " + hintDetectionRadius);
     }
 
     // Activity life cycle
