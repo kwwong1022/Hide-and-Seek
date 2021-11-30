@@ -40,6 +40,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.ar.core.Anchor;
 import com.google.ar.core.Camera;
 import com.google.ar.core.Frame;
+import com.google.ar.core.Plane;
 import com.google.ar.core.TrackingState;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.FrameTime;
@@ -53,6 +54,7 @@ import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
 import java.util.Calendar;
+import java.util.Collection;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener {
     private static final String TAG = "MapsActivity";
@@ -62,8 +64,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final double METER_IN_LATLNG_DEG = 0.00000661131;
     // services instance
     private GoogleMap mMap;
-    private ArFragment arFragment;
-    private Scene scene;
     private ModelRenderable modelRenderable;
     private LocationRequest locationRequest;
     private LocationCallback locationCallBack;
@@ -124,12 +124,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     };
 
     /** AR VAR & FUNCTIONS */
+    private ArFragment arFragment;
+    private Scene scene;
     private final int HINT_INDEX = 0, BOSS_INDEX = 1;
     private final int[] models = {R.raw.frog, R.raw.andy};
     private final String[] modelNames = {"Hint", "Boss"};
     private ModelRenderable[] renderables = new ModelRenderable[models.length];
 
     private TransformableNode hintNode, bossNode;
+    private boolean isBossGenerated = false;
 
     private void loadModels() {
         for (int i=0; i<models.length; i++) {
@@ -209,8 +212,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         /**========================================== AR =========================================*/
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.sceneform_fragment);
         scene = arFragment.getArSceneView().getScene();
-
         loadModels();
+
+        arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
+            Frame frame = arFragment.getArSceneView().getArFrame();
+            Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
+
+            for (Plane plane : planes) {
+                if (plane.getTrackingState() == TrackingState.TRACKING) {
+                    Anchor anchor = plane.createAnchor(plane.getCenterPose());
+                    AnchorNode anchorNode = new AnchorNode(anchor);
+                    anchorNode.setParent(scene);
+
+                    if (!isBossGenerated) {
+                        bossNode = new MovingNode(arFragment.getTransformationSystem());
+                        bossNode.setParent(anchorNode);
+                        bossNode.setName(modelNames[BOSS_INDEX]);
+                        bossNode.setRenderable(renderables[BOSS_INDEX]);
+                        isBossGenerated = !isBossGenerated;
+                    }
+
+                }
+            }
+        });
 
         // btn_shoot.setOnClickListener(v -> shoot());
         // btn_shield.setOnClickListener(v -> defence());
