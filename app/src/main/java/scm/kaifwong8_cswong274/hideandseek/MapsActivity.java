@@ -216,27 +216,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
             Frame frame = arFragment.getArSceneView().getArFrame();
+            Camera camera = frame.getCamera();
             Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
 
             for (Plane plane : planes) {
+                if (camera.getTrackingState() != TrackingState.TRACKING) return;
                 if (plane.getTrackingState() == TrackingState.TRACKING) {
                     Anchor anchor = plane.createAnchor(plane.getCenterPose());
                     AnchorNode anchorNode = new AnchorNode(anchor);
                     anchorNode.setParent(scene);
 
                     if (!isBossGenerated) {
-                        bossNode = new MovingNode(arFragment.getTransformationSystem());
+                        bossNode = new BossNode(arFragment.getTransformationSystem());
                         bossNode.setParent(anchorNode);
                         bossNode.setName(modelNames[BOSS_INDEX]);
                         bossNode.setRenderable(renderables[BOSS_INDEX]);
                         isBossGenerated = !isBossGenerated;
                     }
-
                 }
             }
         });
 
         // btn_shoot.setOnClickListener(v -> shoot());
+        //btn_shoot.setOnClickListener(v -> bossNode.);
         // btn_shield.setOnClickListener(v -> defence());
         /**========================================== AR =========================================*/
 
