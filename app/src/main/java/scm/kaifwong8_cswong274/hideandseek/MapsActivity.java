@@ -129,12 +129,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ArFragment arFragment;
     private Scene scene;
     private final int HINT_INDEX = 0, BOSS_INDEX = 1, BULLET_INDEX = 2, SHIELD_INDEX = 3;
-    private final int[] models = {R.raw.frog, R.raw.andy, R.raw.origami_fish, R.raw.dog_standing};
+    private final int[] models = {R.raw.dog_standing, R.raw.andy, R.raw.origami_fish, R.raw.dog_standing};
     private final String[] modelNames = {"Hint", "Boss", "Bullet", "Shield"};
     private ModelRenderable[] renderables = new ModelRenderable[models.length];
 
     private TransformableNode hintNode, bossNode;
-    private boolean isBossGenerated = false;
+    private boolean isHintGenerated, isBossGenerated = false;
 
     private void loadModels() {
         for (int i=0; i<models.length; i++) {
@@ -216,30 +216,62 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         scene = arFragment.getArSceneView().getScene();
         loadModels();
 
-        arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
-            Frame frame = arFragment.getArSceneView().getArFrame();
-            Camera camera = frame.getCamera();
-            Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
+        // Hint found
+        /*
+            arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
+                Frame frame = arFragment.getArSceneView().getArFrame();
+                Camera camera = frame.getCamera();
+                Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
 
-            for (Plane plane : planes) {
-                if (camera.getTrackingState() != TrackingState.TRACKING) return;
-                if (plane.getTrackingState() == TrackingState.TRACKING) {
-                    Anchor anchor = plane.createAnchor(plane.getCenterPose());
-                    AnchorNode anchorNode = new AnchorNode(anchor);
-                    anchorNode.setParent(scene);
+                for (Plane plane : planes) {
+                    if (camera.getTrackingState() != TrackingState.TRACKING) return;
+                    if (plane.getTrackingState() == TrackingState.TRACKING) {
+                        Anchor anchor = plane.createAnchor(plane.getCenterPose());
+                        AnchorNode anchorNode = new AnchorNode(anchor);
+                        anchorNode.setParent(scene);
 
-                    if (!isBossGenerated) {
-                        bossNode = new BossNode(arFragment.getTransformationSystem());
-                        bossNode.setParent(anchorNode);
-                        bossNode.setName(modelNames[BOSS_INDEX]);
-                        bossNode.setRenderable(renderables[BOSS_INDEX]);
-                        isBossGenerated = !isBossGenerated;
+                        if (!isHintGenerated) {
+                            hintNode = new HintNode(arFragment.getTransformationSystem());
+                            hintNode.setParent(anchorNode);
+                            hintNode.setName(modelNames[HINT_INDEX]);
+                            hintNode.setRenderable(renderables[HINT_INDEX]);
+                            isHintGenerated = !isHintGenerated;
+                        }
                     }
                 }
-            }
-        });
+            });
+        */
 
-        // btn_shoot.setOnClickListener(v -> shoot());
+
+        // Boss found
+        /*
+            arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
+                Frame frame = arFragment.getArSceneView().getArFrame();
+                Camera camera = frame.getCamera();
+                Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
+
+                for (Plane plane : planes) {
+                    if (camera.getTrackingState() != TrackingState.TRACKING) return;
+                    if (plane.getTrackingState() == TrackingState.TRACKING) {
+                        Anchor anchor = plane.createAnchor(plane.getCenterPose());
+                        AnchorNode anchorNode = new AnchorNode(anchor);
+                        anchorNode.setParent(scene);
+
+                        if (!isBossGenerated) {
+                            bossNode = new BossNode(arFragment.getTransformationSystem());
+                            bossNode.setParent(anchorNode);
+                            bossNode.setName(modelNames[BOSS_INDEX]);
+                            bossNode.setRenderable(renderables[BOSS_INDEX]);
+                            isBossGenerated = !isBossGenerated;
+                        }
+                    }
+                }
+            });
+        */
+
+        btn_shoot.setOnClickListener(v -> {
+
+        });
         // btn_shoot.setOnClickListener(v -> ((BossNode)bossNode).updateFacingDirection());
         // btn_shield.setOnClickListener(v -> defence());
         /**========================================== AR =========================================*/

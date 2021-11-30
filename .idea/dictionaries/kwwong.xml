@@ -3,6 +3,8 @@
     <words>
       <w>latlng</w>
       <w>renderable</w>
+      <w>renderables</w>
+      <w>trackables</w>
     </words>
   </dictionary>
 </component>
