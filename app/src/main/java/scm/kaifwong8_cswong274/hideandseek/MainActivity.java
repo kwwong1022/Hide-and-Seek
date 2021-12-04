@@ -13,7 +13,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Button btn_map = findViewById(R.id.btn_map);
+        Button btn_map = findViewById(R.id.btn_gameStart);
         btn_map.setOnClickListener(v -> {
             Intent i = new Intent(MainActivity.this, MapsActivity.class);
             startActivity(i);
