@@ -15,6 +15,7 @@ import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -294,6 +295,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             lp.matchConstraintPercentHeight = !isCameraEnabled? (float)1:(float)0;
             mConstrainLayout.setLayoutParams(lp);
             isCameraEnabled = !isCameraEnabled;
+            aimView.toggleHide();
         });
 
         btn_map_focus.setOnClickListener(v -> mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition)) );
