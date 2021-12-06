@@ -116,7 +116,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         @Override
         public void onAccuracyChanged(Sensor sensor, int accuracy) {}
-
+//
         private void calculateOrientation() {
             float[] values = new float[3];
             float[] R = new float[9];
