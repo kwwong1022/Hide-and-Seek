@@ -139,6 +139,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private final String[] modelNames = {"Hint", "Boss", "Bullet", "Shield"};
     private ModelRenderable[] renderables = new ModelRenderable[models.length];
 
+    private Anchor bossAnchor;
     private TransformableNode hintNode, bossNode;
     private boolean isHintGenerated, isBossGenerated = false;
 
@@ -181,10 +182,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         FloatingActionButton btn_camera = (FloatingActionButton) findViewById(R.id.btn_camera);
         FloatingActionButton btn_map_focus = findViewById(R.id.btn_map_focus);
         topFragment = (TopFragment) getSupportFragmentManager().findFragmentById(R.id.top_fragment);
-        DistText = (TextView)topFragment.getView().findViewById(R.id.distTxt);
-        HintText = (TextView)topFragment.getView().findViewById(R.id.hintTxt);
+        DistText = (TextView)topFragment.getView().findViewById(R.id.tv_distToHint);
+        HintText = (TextView)topFragment.getView().findViewById(R.id.tv_hintFound);
 
-        HintText.setText(currentHintNumber + "/" + hintNumberNeeded);   // move to other place? generate hint?
+        HintText.setText("Hint Found: " + currentHintNumber + "/" + hintNumberNeeded);   // move to other place? generate hint?
 
         ConstraintLayout aimViewContainer = findViewById(R.id.aim_view_container);
         this.aimView = new AimView(this);
@@ -210,8 +211,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     tempLocation.setLatitude(tempLatLng.latitude);
                     tempLocation.setLongitude(tempLatLng.longitude);
 
-                    currentDistToHint = currLocation.distanceTo(tempLocation);
-                    DistText.setText(currentDistToHint + " m");
+                    currentDistToHint = (float) (Math.round(currLocation.distanceTo(tempLocation)/1000*10)/10d);
+                    DistText.setText("Distance to Hint: " + currentDistToHint + " km");
                     //DistText.setText(currentHintNumber);
                 }
             }
@@ -257,8 +258,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             for (Plane plane : planes) {
                 if (camera.getTrackingState() != TrackingState.TRACKING) return;
                 if (plane.getTrackingState() == TrackingState.TRACKING) {
-                    Anchor anchor = plane.createAnchor(plane.getCenterPose());
-                    AnchorNode anchorNode = new AnchorNode(anchor);
+                    bossAnchor = plane.createAnchor(plane.getCenterPose());
+                    AnchorNode anchorNode = new AnchorNode(bossAnchor);
                     anchorNode.setParent(scene);
 
                     if (!isBossGenerated) {
