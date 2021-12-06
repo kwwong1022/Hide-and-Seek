@@ -305,7 +305,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
-
+                btn_camera.performClick();
+                btn_camera.performClick();
             }
         }, 10);
 
