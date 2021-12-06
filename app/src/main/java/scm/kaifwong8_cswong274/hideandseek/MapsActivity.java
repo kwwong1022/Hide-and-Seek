@@ -74,7 +74,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private AimView aimView;
     private DistToHintGraph distToHintGraph;
     private StatusView statusView;
-
+    private CircleOptions circleOptions;
     private int timeSecond = 0;
     private int score = 0;
     private float distance = 0, fullDistance = 0, avgSpd = 0, totalSpd = 0;
@@ -134,7 +134,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private final int[] models = {R.raw.dog_standing, R.raw.andy, R.raw.origami_fish, R.raw.dog_standing};
     private final String[] modelNames = {"Hint", "Boss", "Bullet", "Shield"};
     private ModelRenderable[] renderables = new ModelRenderable[models.length];
-
+    private FloatingActionButton btn_camera;
     private Anchor bossAnchor;
     private TransformableNode hintNode, bossNode;
     private boolean isHintGenerated, isBossGenerated = false;
@@ -175,7 +175,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         ConstraintLayout ui_background = findViewById(R.id.ui_background);
         FloatingActionButton btn_shoot = findViewById(R.id.btn_shoot);
         FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
-        FloatingActionButton btn_camera = (FloatingActionButton) findViewById(R.id.btn_camera);
+        btn_camera = (FloatingActionButton) findViewById(R.id.btn_camera);
         FloatingActionButton btn_map_focus = findViewById(R.id.btn_map_focus);
         topFragment = (TopFragment) getSupportFragmentManager().findFragmentById(R.id.top_fragment);
         tv_distToHint = topFragment.getView().findViewById(R.id.tv_distToHint);
@@ -211,10 +211,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     tempLocation.setLatitude(tempLatLng.latitude);
                     tempLocation.setLongitude(tempLatLng.longitude);
 
-                    currentDistToHint = (float) (Math.round(currLocation.distanceTo(tempLocation)/1000*10)/10d);
+
+                    currentDistToHint = (float) (currLocation.distanceTo(tempLocation));
                     fullDistance = (float) (Math.round(currLocation.distanceTo(tempLocation)/1000*10)/10d);
                     tv_distToHint.setText("Distance to Hint: " + currentDistToHint + " km");
-                    //DistText.setText(currentHintNumber);
+                    isInsideDetArea = currentDistToHint>hintDetectionRadius? false:true;
+                    Log.i("Dist",currentDistToHint+" , "+hintDetectionRadius);
                 }
             }
         };
@@ -339,6 +341,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         MapsActivity.this.tv_walkTime.setText("walk time: " + timeString);
                         if (currLocation!=null) {
                             MapsActivity.this.tv_walkDistance.setText("distance: " + distance + " km");
+
+                            if (isInsideDetArea){
+                                btn_camera.setEnabled(true);
+                            }
+                            else {
+                                btn_camera.setEnabled(false);
+                            }
                         }
                     }
                 });
@@ -383,6 +392,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 updateMarker(playerMarker, location);
                 mMap.clear();
                 if (location != null) {
+
                     playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
                             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
                 }
@@ -436,7 +446,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (isInsideDetArea){
             hintMarker.remove();
             hintCircle.remove();
-
+            btn_camera.performClick();//restore top fragment cover
             if (!bossAreaFound){
                 currentHintNumber++;
                 if (currentHintNumber >= hintNumberNeeded){
@@ -473,7 +483,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         hintMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.marker_none));
         hintMarker.setTitle("!!!");
 
-        CircleOptions circleOptions = new CircleOptions();
+        circleOptions = new CircleOptions();
         circleOptions.center(new LatLng(currLocation.getLatitude() + rngLat,currLocation.getLongitude() +rngLong));
         circleOptions.radius(hintDetectionRadius);
 
@@ -522,6 +532,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d(TAG, "onDestroy: locationCallBack requested");
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallBack, null);
         }
+
     }
 
     @Override
