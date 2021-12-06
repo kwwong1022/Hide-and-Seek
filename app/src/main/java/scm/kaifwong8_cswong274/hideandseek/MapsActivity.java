@@ -79,6 +79,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private AimView aimView;
     private StatusView statusView;
 
+    private int timeSecond = 0;
+    private int score = 0;
+    private float distance = 0, avgSpd = 0, totalSpd = 0;
+    private String timeString = "00:00:00";
+    private Timer secondTimer;
+
     private float heading = 0;
     private int currentHintNumber;
     private int hintNumberNeeded = 3;
@@ -218,56 +224,53 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         // Hint found
         /*
-            arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
-                Frame frame = arFragment.getArSceneView().getArFrame();
-                Camera camera = frame.getCamera();
-                Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
+        arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
+            Frame frame = arFragment.getArSceneView().getArFrame();
+            Camera camera = frame.getCamera();
+            Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
 
-                for (Plane plane : planes) {
-                    if (camera.getTrackingState() != TrackingState.TRACKING) return;
-                    if (plane.getTrackingState() == TrackingState.TRACKING) {
-                        Anchor anchor = plane.createAnchor(plane.getCenterPose());
-                        AnchorNode anchorNode = new AnchorNode(anchor);
-                        anchorNode.setParent(scene);
+            for (Plane plane : planes) {
+                if (camera.getTrackingState() != TrackingState.TRACKING) return;
+                if (plane.getTrackingState() == TrackingState.TRACKING) {
+                    Anchor anchor = plane.createAnchor(plane.getCenterPose());
+                    AnchorNode anchorNode = new AnchorNode(anchor);
+                    anchorNode.setParent(scene);
 
-                        if (!isHintGenerated) {
-                            hintNode = new HintNode(arFragment.getTransformationSystem());
-                            hintNode.setParent(anchorNode);
-                            hintNode.setName(modelNames[HINT_INDEX]);
-                            hintNode.setRenderable(renderables[HINT_INDEX]);
-                            isHintGenerated = !isHintGenerated;
-                        }
+                    if (!isHintGenerated) {
+                        hintNode = new HintNode(arFragment.getTransformationSystem());
+                        hintNode.setParent(anchorNode);
+                        hintNode.setName(modelNames[HINT_INDEX]);
+                        hintNode.setRenderable(renderables[HINT_INDEX]);
+                        isHintGenerated = !isHintGenerated;
                     }
                 }
-            });
+            }
+        });
         */
-
 
         // Boss found
-        /*
-            arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
-                Frame frame = arFragment.getArSceneView().getArFrame();
-                Camera camera = frame.getCamera();
-                Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
+        arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
+            Frame frame = arFragment.getArSceneView().getArFrame();
+            Camera camera = frame.getCamera();
+            Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
 
-                for (Plane plane : planes) {
-                    if (camera.getTrackingState() != TrackingState.TRACKING) return;
-                    if (plane.getTrackingState() == TrackingState.TRACKING) {
-                        Anchor anchor = plane.createAnchor(plane.getCenterPose());
-                        AnchorNode anchorNode = new AnchorNode(anchor);
-                        anchorNode.setParent(scene);
+            for (Plane plane : planes) {
+                if (camera.getTrackingState() != TrackingState.TRACKING) return;
+                if (plane.getTrackingState() == TrackingState.TRACKING) {
+                    Anchor anchor = plane.createAnchor(plane.getCenterPose());
+                    AnchorNode anchorNode = new AnchorNode(anchor);
+                    anchorNode.setParent(scene);
 
-                        if (!isBossGenerated) {
-                            bossNode = new BossNode(arFragment.getTransformationSystem());
-                            bossNode.setParent(anchorNode);
-                            bossNode.setName(modelNames[BOSS_INDEX]);
-                            bossNode.setRenderable(renderables[BOSS_INDEX]);
-                            isBossGenerated = !isBossGenerated;
-                        }
+                    if (!isBossGenerated) {
+                        bossNode = new BossNode(arFragment.getTransformationSystem());
+                        bossNode.setParent(anchorNode);
+                        bossNode.setName(modelNames[BOSS_INDEX]);
+                        bossNode.setRenderable(renderables[BOSS_INDEX]);
+                        isBossGenerated = !isBossGenerated;
                     }
                 }
-            });
-        */
+            }
+        });
 
         btn_shoot.setOnClickListener(v -> {
 
@@ -294,6 +297,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         });
 
         btn_map_focus.setOnClickListener(v -> mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition)) );
+
+        // Timer - 1s
+        secondTimer = new Timer();
+        secondTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                timeSecond++;
+                if (timeSecond != 0) timeString = getTime();
+                Log.d(TAG, "walk time: " + timeString);
+                if (currLocation!=null) {
+                    totalSpd+=currLocation.getSpeed();
+                    avgSpd = (float) (Math.round((totalSpd/timeSecond)*10)/10.d);
+                    distance = (float) (Math.round((totalSpd/timeSecond/3600) * timeSecond*10)/10.d);
+                    Log.d(TAG, "distance: " + distance);
+                }
+            }
+        }, 1000, 1000);
 
         // must be the last func in onCreate
         updateLocation();
@@ -331,8 +351,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 updateMapCamera(location);
                 updateMarker(playerMarker, location);
                 mMap.clear();
-                playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                if (location != null) {
+                    playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                }
             });
         } else { ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_REQUEST_CODE); }
     }
@@ -397,6 +419,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 GenerateHint(currLocation);
             } else {
                 //BossFight
+
             }
 
             isInsideDetArea = false;
@@ -444,6 +467,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         DistText.setText(currentDistToHint/1000 + " km");
 
         Log.i(TAG, "Detection Radius In Meter: " + hintDetectionRadius);
+    }
+
+    private String getTime() {
+        String hr, min, s;
+        s = timeSecond%60<10? "0"+(timeSecond%60):String.valueOf(timeSecond%60);
+        min = timeSecond/60<10? "0"+(timeSecond/60):String.valueOf(timeSecond/60);
+        hr = timeSecond/3600<10? "0"+(timeSecond/3600):String.valueOf(timeSecond/3600);
+        return hr+" : "+min+" : "+s;
     }
 
     // Activity life cycle
