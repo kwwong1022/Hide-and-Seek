@@ -116,7 +116,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         @Override
         public void onAccuracyChanged(Sensor sensor, int accuracy) {}
-//
+        //
         private void calculateOrientation() {
             float[] values = new float[3];
             float[] R = new float[9];
@@ -213,8 +213,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
                     currentDistToHint = (float) (currLocation.distanceTo(tempLocation));
+                    float temp = (float) (Math.round(currentDistToHint/1000*10)/10d);
                     fullDistance = (float) (Math.round(currLocation.distanceTo(tempLocation)/1000*10)/10d);
-                    tv_distToHint.setText("Distance to Hint: " + currentDistToHint + " km");
+                    tv_distToHint.setText("Distance to Hint: " + temp + " km");
                     isInsideDetArea = currentDistToHint>hintDetectionRadius? false:true;
                     Log.i("Dist",currentDistToHint+" , "+hintDetectionRadius);
                 }
@@ -340,6 +341,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     public void run() {
                         MapsActivity.this.tv_walkTime.setText("walk time: " + timeString);
                         if (currLocation!=null) {
+
                             MapsActivity.this.tv_walkDistance.setText("distance: " + distance + " km");
 
                             if (isInsideDetArea){
@@ -409,11 +411,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private void updateMapCamera(Location location) {
         if (location != null) {
-             cameraPosition = new CameraPosition.Builder()
+            cameraPosition = new CameraPosition.Builder()
                     .target(new LatLng(location.getLatitude(), location.getLongitude()))
                     .bearing(heading)   // degrees clockwise from north
                     .zoom(15).build();
-             mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
     }
 
@@ -506,7 +508,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         currentDistToHint = currLocation.distanceTo(markerLocation);
 
-        tv_distToHint.setText(currentDistToHint/1000 + " km");
+        //tv_distToHint.setText(currentDistToHint/1000 + " k");
 
         Log.i(TAG, "Detection Radius In Meter: " + hintDetectionRadius);
     }
