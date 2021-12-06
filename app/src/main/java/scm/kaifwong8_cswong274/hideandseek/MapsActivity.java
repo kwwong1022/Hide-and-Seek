@@ -131,7 +131,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ArFragment arFragment;
     private Scene scene;
     private final int HINT_INDEX = 0, BOSS_INDEX = 1, BULLET_INDEX = 2, SHIELD_INDEX = 3;
-    private final int[] models = {R.raw.dog_standing, R.raw.andy, R.raw.origami_fish, R.raw.dog_standing};
+    private final int[] models = {R.raw.ufo, R.raw.boss, R.raw.origami_fish, R.raw.dog_standing};
     private final String[] modelNames = {"Hint", "Boss", "Bullet", "Shield"};
     private ModelRenderable[] renderables = new ModelRenderable[models.length];
     private FloatingActionButton btn_camera;
@@ -257,6 +257,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             aimView.toggleHide();
             if (!bossAreaFound){
                 initHint();
+                //initBoss();
 
             } else {
                 initBoss();
@@ -302,10 +303,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        MapsActivity.this.tv_walkTime.setText("walk time: " + timeString);
+                        MapsActivity.this.tv_walkTime.setText("Adventure time: " + timeString);
                         if (currLocation!=null) {
 
-                            MapsActivity.this.tv_walkDistance.setText("distance: " + distance + " km");
+                            MapsActivity.this.tv_walkDistance.setText("Distance: " + distance + " km");
 
                             if (isInsideDetArea){
                                 btn_camera.setEnabled(true);

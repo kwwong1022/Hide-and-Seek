@@ -191,6 +191,7 @@
                 android:layout_marginBottom="16dp"
                 android:backgroundTint="#1A1A1A"
                 android:text="Finish"
+                android:textAllCaps="false"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
