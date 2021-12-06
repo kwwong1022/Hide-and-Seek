@@ -301,6 +301,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         btn_map_focus.setOnClickListener(v -> mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition)) );
 
+        // one time timer
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+
+            }
+        }, 10);
+
         // Timer - 1s
         secondTimer = new Timer();
         secondTimer.schedule(new TimerTask() {
