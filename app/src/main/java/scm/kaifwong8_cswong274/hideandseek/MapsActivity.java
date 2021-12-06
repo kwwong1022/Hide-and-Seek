@@ -3,7 +3,6 @@ package scm.kaifwong8_cswong274.hideandseek;
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
-import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
@@ -43,17 +42,12 @@ import com.google.ar.core.Frame;
 import com.google.ar.core.Plane;
 import com.google.ar.core.TrackingState;
 import com.google.ar.sceneform.AnchorNode;
-import com.google.ar.sceneform.FrameTime;
-import com.google.ar.sceneform.HitTestResult;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.Scene;
-import com.google.ar.sceneform.collision.Ray;
-import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -75,7 +69,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Sensor sensor_a, sensor_m;
     // view
     private TopFragment topFragment;
-    private TextView DistText, HintText;
+    private TextView tv_distToHint, tv_hintFound, tv_walkTime, tv_walkDistance;
     private AimView aimView;
     private StatusView statusView;
 
@@ -182,10 +176,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         FloatingActionButton btn_camera = (FloatingActionButton) findViewById(R.id.btn_camera);
         FloatingActionButton btn_map_focus = findViewById(R.id.btn_map_focus);
         topFragment = (TopFragment) getSupportFragmentManager().findFragmentById(R.id.top_fragment);
-        DistText = (TextView)topFragment.getView().findViewById(R.id.tv_distToHint);
-        HintText = (TextView)topFragment.getView().findViewById(R.id.tv_hintFound);
-
-        HintText.setText("Hint Found: " + currentHintNumber + "/" + hintNumberNeeded);   // move to other place? generate hint?
+        tv_distToHint = topFragment.getView().findViewById(R.id.tv_distToHint);
+        tv_hintFound = topFragment.getView().findViewById(R.id.tv_hintFound);
+        tv_walkDistance = topFragment.getView().findViewById(R.id.tv_walk_distance);
+        tv_walkTime = topFragment.getView().findViewById(R.id.tv_walk_time);
+        tv_hintFound.setText("Hint Found: " + currentHintNumber + "/" + hintNumberNeeded);   // move to other place? generate hint?
 
         ConstraintLayout aimViewContainer = findViewById(R.id.aim_view_container);
         this.aimView = new AimView(this);
@@ -212,7 +207,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     tempLocation.setLongitude(tempLatLng.longitude);
 
                     currentDistToHint = (float) (Math.round(currLocation.distanceTo(tempLocation)/1000*10)/10d);
-                    DistText.setText("Distance to Hint: " + currentDistToHint + " km");
+                    tv_distToHint.setText("Distance to Hint: " + currentDistToHint + " km");
                     //DistText.setText(currentHintNumber);
                 }
             }
@@ -305,16 +300,34 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void run() {
                 timeSecond++;
-                if (timeSecond != 0) timeString = getTime();
-                Log.d(TAG, "walk time: " + timeString);
+                timeString = getTime();
+                //MapsActivity.this.tv_walkTime.setText("walk time: " + timeString);
+
                 if (currLocation!=null) {
                     totalSpd+=currLocation.getSpeed();
                     avgSpd = (float) (Math.round((totalSpd/timeSecond)*10)/10.d);
                     distance = (float) (Math.round((totalSpd/timeSecond/3600) * timeSecond*10)/10.d);
-                    Log.d(TAG, "distance: " + distance);
+                    //MapsActivity.this.tv_walkDistance.setText("distance: " + distance);
                 }
             }
         }, 1000, 1000);
+
+        Timer uiTimer = new Timer();
+        TimerTask uiTimerTask = new TimerTask() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        MapsActivity.this.tv_walkTime.setText("walk time: " + timeString);
+                        if (currLocation!=null) {
+                            MapsActivity.this.tv_walkDistance.setText("distance: " + distance + " km");
+                        }
+                    }
+                });
+            }
+        };
+        uiTimer.scheduleAtFixedRate(uiTimerTask, 0, 1000);
 
         // must be the last func in onCreate
         updateLocation();
@@ -411,12 +424,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 currentHintNumber++;
                 if (currentHintNumber >= hintNumberNeeded){
                     bossAreaFound = true;
-                    HintText.setTextColor(Color.RED);
+                    tv_hintFound.setTextColor(Color.RED);
                 } else {
                     bossAreaFound = false;
-                    HintText.setTextColor(Color.WHITE);
+                    tv_hintFound.setTextColor(Color.WHITE);
                 }
-                HintText.setText(currentHintNumber+"/"+hintNumberNeeded);
+                tv_hintFound.setText(currentHintNumber+"/"+hintNumberNeeded);
                 GenerateHint(currLocation);
             } else {
                 //BossFight
@@ -465,7 +478,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markerLocation.setLongitude(markerLatLng.longitude);
 
         currentDistToHint = currLocation.distanceTo(markerLocation);
-        DistText.setText(currentDistToHint/1000 + " km");
+        tv_distToHint.setText(currentDistToHint/1000 + " km");
 
         Log.i(TAG, "Detection Radius In Meter: " + hintDetectionRadius);
     }
