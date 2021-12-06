@@ -229,53 +229,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         // Hint found
         /*
-        arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
-            Frame frame = arFragment.getArSceneView().getArFrame();
-            Camera camera = frame.getCamera();
-            Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
 
-            for (Plane plane : planes) {
-                if (camera.getTrackingState() != TrackingState.TRACKING) return;
-                if (plane.getTrackingState() == TrackingState.TRACKING) {
-                    Anchor anchor = plane.createAnchor(plane.getCenterPose());
-                    AnchorNode anchorNode = new AnchorNode(anchor);
-                    anchorNode.setParent(scene);
-
-                    if (!isHintGenerated) {
-                        hintNode = new HintNode(arFragment.getTransformationSystem());
-                        hintNode.setParent(anchorNode);
-                        hintNode.setName(modelNames[HINT_INDEX]);
-                        hintNode.setRenderable(renderables[HINT_INDEX]);
-                        isHintGenerated = !isHintGenerated;
-                    }
-                }
-            }
-        });
         */
-
-        // Boss found
-        arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
-            Frame frame = arFragment.getArSceneView().getArFrame();
-            Camera camera = frame.getCamera();
-            Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
-
-            for (Plane plane : planes) {
-                if (camera.getTrackingState() != TrackingState.TRACKING) return;
-                if (plane.getTrackingState() == TrackingState.TRACKING) {
-                    bossAnchor = plane.createAnchor(plane.getCenterPose());
-                    AnchorNode anchorNode = new AnchorNode(bossAnchor);
-                    anchorNode.setParent(scene);
-
-                    if (!isBossGenerated) {
-                        bossNode = new BossNode(arFragment.getTransformationSystem());
-                        bossNode.setParent(anchorNode);
-                        bossNode.setName(modelNames[BOSS_INDEX]);
-                        bossNode.setRenderable(renderables[BOSS_INDEX]);
-                        isBossGenerated = !isBossGenerated;
-                    }
-                }
-            }
-        });
 
         btn_shoot.setOnClickListener(v -> {
 
@@ -300,6 +255,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mConstrainLayout.setLayoutParams(lp);
             isCameraEnabled = !isCameraEnabled;
             aimView.toggleHide();
+            if (!bossAreaFound){
+                initHint();
+
+            } else {
+                initBoss();
+
+            }
+
         });
 
         btn_map_focus.setOnClickListener(v -> mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition)) );
@@ -493,10 +456,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             circleOptions.fillColor(Color.argb(64,240,240,240));
             circleOptions.strokeColor(Color.argb(255,240,240,240));
             circleOptions.strokeWidth(6);
+
         } else {
             circleOptions.fillColor(Color.argb(64,240,20,20));
             circleOptions.strokeColor(Color.argb(255,240,240,240));
             circleOptions.strokeWidth(10);
+
         }
 
         hintCircle = mMap.addCircle(circleOptions);
@@ -530,7 +495,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (sensor_m != null) sensorManager.registerListener(sensorEventListener, sensor_m, SensorManager.SENSOR_DELAY_UI);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            updateLocation();
+            //updateLocation();
+
+            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
+                    updateMapCamera(location);
+                    updateMarker(playerMarker, location);
+                    if (location != null) {
+
+                        playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                    }
+                });
+            } else { ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_REQUEST_CODE); }
             Log.d(TAG, "onDestroy: locationCallBack requested");
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallBack, null);
         }
@@ -552,6 +531,56 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         super.onDestroy();
+    }
+
+    private void initBoss(){
+        arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
+            Frame frame = arFragment.getArSceneView().getArFrame();
+            Camera camera = frame.getCamera();
+            Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
+
+            for (Plane plane : planes) {
+                if (camera.getTrackingState() != TrackingState.TRACKING) return;
+                if (plane.getTrackingState() == TrackingState.TRACKING) {
+                    bossAnchor = plane.createAnchor(plane.getCenterPose());
+                    AnchorNode anchorNode = new AnchorNode(bossAnchor);
+                    anchorNode.setParent(scene);
+
+                    if (!isBossGenerated) {
+                        bossNode = new BossNode(arFragment.getTransformationSystem());
+                        bossNode.setParent(anchorNode);
+                        bossNode.setName(modelNames[BOSS_INDEX]);
+                        bossNode.setRenderable(renderables[BOSS_INDEX]);
+                        isBossGenerated = !isBossGenerated;
+                    }
+                }
+            }
+        });
+    }
+
+    private void initHint(){
+        arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
+            Frame frame = arFragment.getArSceneView().getArFrame();
+            Camera camera = frame.getCamera();
+            Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
+
+            for (Plane plane : planes) {
+                if (camera.getTrackingState() != TrackingState.TRACKING) return;
+                if (plane.getTrackingState() == TrackingState.TRACKING) {
+                    Anchor anchor = plane.createAnchor(plane.getCenterPose());
+                    AnchorNode anchorNode = new AnchorNode(anchor);
+                    anchorNode.setParent(scene);
+
+                    if (!isHintGenerated) {
+                        hintNode = new HintNode(arFragment.getTransformationSystem());
+                        hintNode.setParent(anchorNode);
+                        hintNode.setName(modelNames[HINT_INDEX]);
+                        hintNode.setRenderable(renderables[HINT_INDEX]);
+                        isHintGenerated = !isHintGenerated;
+                    }
+                }
+            }
+        });
     }
 }
 
