@@ -71,6 +71,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private TopFragment topFragment;
     private TextView tv_distToHint, tv_hintFound, tv_walkTime, tv_walkDistance;
     private AimView aimView;
+    private DistToHintGraph distToHintGraph;
     private StatusView statusView;
 
     private int timeSecond = 0;
@@ -185,6 +186,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         ConstraintLayout aimViewContainer = findViewById(R.id.aim_view_container);
         this.aimView = new AimView(this);
         aimViewContainer.addView(aimView);
+        ConstraintLayout distToHintGraphContainer = topFragment.getView().findViewById(R.id.distToHint_container);
+        this.distToHintGraph = new DistToHintGraph(this);
+        distToHintGraphContainer.addView(distToHintGraph);
 
         // Location
         initLocationRequest();
