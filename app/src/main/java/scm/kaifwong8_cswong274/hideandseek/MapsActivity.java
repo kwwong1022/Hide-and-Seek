@@ -77,7 +77,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private int timeSecond = 0;
     private int score = 0;
-    private float distance = 0, avgSpd = 0, totalSpd = 0;
+    private float distance = 0, fullDistance = 0, avgSpd = 0, totalSpd = 0;
     private String timeString = "00:00:00";
     private Timer secondTimer;
 
@@ -212,6 +212,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     tempLocation.setLongitude(tempLatLng.longitude);
 
                     currentDistToHint = (float) (Math.round(currLocation.distanceTo(tempLocation)/1000*10)/10d);
+                    fullDistance = (float) (Math.round(currLocation.distanceTo(tempLocation)/1000*10)/10d);
                     tv_distToHint.setText("Distance to Hint: " + currentDistToHint + " km");
                     //DistText.setText(currentHintNumber);
                 }
@@ -314,6 +315,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     avgSpd = (float) (Math.round((totalSpd/timeSecond)*10)/10.d);
                     distance = (float) (Math.round((totalSpd/timeSecond/3600) * timeSecond*10)/10.d);
                     //MapsActivity.this.tv_walkDistance.setText("distance: " + distance);
+                    distToHintGraph.setDistMark(fullDistance, distance);
                 }
             }
         }, 1000, 1000);
@@ -484,6 +486,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markerLocation.setLongitude(markerLatLng.longitude);
 
         currentDistToHint = currLocation.distanceTo(markerLocation);
+
         tv_distToHint.setText(currentDistToHint/1000 + " km");
 
         Log.i(TAG, "Detection Radius In Meter: " + hintDetectionRadius);
