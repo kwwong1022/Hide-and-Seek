@@ -84,7 +84,6 @@
             android:id="@+id/imageView3"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
             android:layout_marginBottom="8dp"
             android:src="@drawable/ic_baseline_location_on_24"
             app:layout_constraintBottom_toTopOf="@+id/distToHint_container"
@@ -111,15 +110,16 @@
             app:layout_constraintBottom_toTopOf="@+id/tv_distToHint"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tv_walk_distance" />
+            app:layout_constraintTop_toBottomOf="@+id/tv_walk_distance"
+            app:layout_constraintVertical_bias="0.38" />
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/distToHint_container"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:layout_marginBottom="16dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="24dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent">
@@ -134,6 +134,28 @@
             android:src="@drawable/ic_baseline_location_on_24"
             app:layout_constraintStart_toStartOf="@+id/imageView6"
             app:layout_constraintTop_toBottomOf="@+id/imageView6" />
+
+        <ImageView
+            android:id="@+id/img_hint_flag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_baseline_sports_score_24"
+            app:layout_constraintBottom_toBottomOf="@+id/distToHint_container"
+            app:layout_constraintEnd_toEndOf="@+id/distToHint_container"
+            app:layout_constraintTop_toTopOf="@+id/tv_distToHint"
+            app:layout_constraintVertical_bias="0.62" />
+
+        <TextView
+            android:id="@+id/tv_camera_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Camera Not Ready"
+            android:textColor="#666666"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="@+id/distToHint_container"
+            app:layout_constraintStart_toStartOf="@+id/distToHint_container"
+            app:layout_constraintTop_toBottomOf="@+id/imageView8" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
