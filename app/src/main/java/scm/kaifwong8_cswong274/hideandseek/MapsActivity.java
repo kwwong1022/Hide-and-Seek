@@ -327,7 +327,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     avgSpd = (float) (Math.round((totalSpd/timeSecond)*10)/10.d);
                     distance = (float) (Math.round((totalSpd/timeSecond/3600) * timeSecond*10)/10.d);
                     //MapsActivity.this.tv_walkDistance.setText("distance: " + distance);
-                    distToHintGraph.setDistMark(fullDistance, distance);
+                    distToHintGraph.setDistMark(fullDistance, currentDistToHint);
                 }
             }
         }, 1000, 1000);
@@ -534,7 +534,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d(TAG, "onDestroy: locationCallBack requested");
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallBack, null);
         }
-
     }
 
     @Override
