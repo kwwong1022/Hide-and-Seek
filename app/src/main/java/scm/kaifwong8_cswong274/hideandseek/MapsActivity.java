@@ -6,6 +6,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
+import android.animation.ObjectAnimator;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.hardware.Sensor;
@@ -15,7 +16,7 @@ import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
+import android.view.animation.LinearInterpolator;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -43,8 +44,11 @@ import com.google.ar.core.Frame;
 import com.google.ar.core.Plane;
 import com.google.ar.core.TrackingState;
 import com.google.ar.sceneform.AnchorNode;
+import com.google.ar.sceneform.HitTestResult;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.Scene;
+import com.google.ar.sceneform.collision.Ray;
+import com.google.ar.sceneform.math.Vector3Evaluator;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
@@ -61,7 +65,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final double METER_IN_LATLNG_DEG = 0.00000661131;
     // services instance
     private GoogleMap mMap;
-    private ModelRenderable modelRenderable;
     private LocationRequest locationRequest;
     private LocationCallback locationCallBack;
     private FusedLocationProviderClient fusedLocationClient;
@@ -73,19 +76,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private TextView tv_distToHint, tv_hintFound, tv_walkTime, tv_walkDistance;
     private AimView aimView;
     private DistToHintGraph distToHintGraph;
-    private StatusView statusView;
     private CircleOptions circleOptions;
+
     private int timeSecond = 0;
     private int score = 0;
-    private float distance = 0, fullDistance = 0, avgSpd = 0, totalSpd = 0;
+    private float distance = 0, fullDistance = 0, totalSpd = 0;
     private String timeString = "00:00:00";
-    private Timer secondTimer;
 
     private float heading = 0;
     private int currentHintNumber;
-    private int hintNumberNeeded = 3;
+    private final int HINT_NUMBER_NEEDED = 3;
     private float currentDistToHint;
-    private float hintDetectionRadius = 700;
+    private final float HINT_DETECTION_RADIUS = 700;
     private boolean bossAreaFound, isInsideDetArea = false;
     private Circle hintCircle;
     private Marker playerMarker, hintMarker;
@@ -156,11 +158,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void removeNode(Node node) {
-        AnchorNode parent = (AnchorNode)node.getParent();
-        parent.getAnchor().detach();
-
-        parent.removeChild(node);
-        scene.removeChild(parent);
+//        AnchorNode parent = (AnchorNode)node.getParent();
+//        parent.getAnchor().detach();
+//
+//        parent.removeChild(node);
+        scene.removeChild(node);
     }
     /** END */
 
@@ -182,14 +184,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         tv_hintFound = topFragment.getView().findViewById(R.id.tv_hintFound);
         tv_walkDistance = topFragment.getView().findViewById(R.id.tv_walk_distance);
         tv_walkTime = topFragment.getView().findViewById(R.id.tv_walk_time);
-        tv_hintFound.setText("Hint Found: " + currentHintNumber + "/" + hintNumberNeeded);   // move to other place? generate hint?
 
+        // customView
         ConstraintLayout aimViewContainer = findViewById(R.id.aim_view_container);
         this.aimView = new AimView(this);
         aimViewContainer.addView(aimView);
         ConstraintLayout distToHintGraphContainer = topFragment.getView().findViewById(R.id.distToHint_container);
         this.distToHintGraph = new DistToHintGraph(this);
         distToHintGraphContainer.addView(distToHintGraph);
+
+        // tv_init
+        tv_hintFound.setText("Hint Found: " + currentHintNumber + "/" + HINT_NUMBER_NEEDED);   // move to other place? generate hint?
 
         // Location
         initLocationRequest();
@@ -216,8 +221,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     float temp = (float) (Math.round(currentDistToHint/1000*10)/10d);
                     fullDistance = (float) (Math.round(currLocation.distanceTo(tempLocation)/1000*10)/10d);
                     tv_distToHint.setText("Distance to Hint: " + temp + " km");
-                    isInsideDetArea = currentDistToHint>hintDetectionRadius? false:true;
-                    Log.i("Dist",currentDistToHint+" , "+hintDetectionRadius);
+                    isInsideDetArea = currentDistToHint> HINT_DETECTION_RADIUS ? false:true;
+                    Log.i("Dist",currentDistToHint+" , "+ HINT_DETECTION_RADIUS);
                 }
             }
         };
@@ -227,15 +232,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         scene = arFragment.getArSceneView().getScene();
         loadModels();
 
-        // Hint found
-        /*
 
-        */
 
         btn_shoot.setOnClickListener(v -> {
+            //shootToUser();
+            //shoot();
 
         });
-        // btn_shoot.setOnClickListener(v -> ((BossNode)bossNode).updateFacingDirection());
         // btn_shield.setOnClickListener(v -> defence());
         /**========================================== AR =========================================*/
 
@@ -248,6 +251,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         // UI
         btn_camera.setOnClickListener(v -> {
+            // top fragment control rebuild?
             ConstraintLayout mConstrainLayout = (ConstraintLayout) findViewById(R.id.top_fragment);
             ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
 
@@ -255,15 +259,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mConstrainLayout.setLayoutParams(lp);
             isCameraEnabled = !isCameraEnabled;
             aimView.toggleHide();
+
             if (!bossAreaFound){
+                Log.i(TAG,"hint model init");
                 initHint();
-                //initBoss();
-
             } else {
+                Log.i(TAG,"boss model init");
                 initBoss();
-
             }
-
         });
 
         btn_map_focus.setOnClickListener(v -> mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition)) );
@@ -278,19 +281,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }, 10);
 
         // Timer - 1s
-        secondTimer = new Timer();
+        Timer secondTimer = new Timer();
         secondTimer.schedule(new TimerTask() {
             @Override
             public void run() {
                 timeSecond++;
                 timeString = getTime();
-                //MapsActivity.this.tv_walkTime.setText("walk time: " + timeString);
 
                 if (currLocation!=null) {
                     totalSpd+=currLocation.getSpeed();
-                    avgSpd = (float) (Math.round((totalSpd/timeSecond)*10)/10.d);
                     distance = (float) (Math.round((totalSpd/timeSecond/3600) * timeSecond*10)/10.d);
-                    //MapsActivity.this.tv_walkDistance.setText("distance: " + distance);
+                    // distToHintGraph update
                     distToHintGraph.setDistMark(fullDistance, currentDistToHint);
                 }
             }
@@ -310,8 +311,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                             if (isInsideDetArea){
                                 btn_camera.setEnabled(true);
-                            }
-                            else {
+                            } else {
                                 btn_camera.setEnabled(false);
                             }
                         }
@@ -356,7 +356,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
                 updateMapCamera(location);
                 updateMarker(playerMarker, location);
-                mMap.clear();
+
                 if (location != null) {
 
                     playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
@@ -378,7 +378,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             cameraPosition = new CameraPosition.Builder()
                     .target(new LatLng(location.getLatitude(), location.getLongitude()))
                     .bearing(heading)   // degrees clockwise from north
-                    .zoom(15).build();
+                    .zoom(14)
+                    .build();
             mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
     }
@@ -407,40 +408,37 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Log.i(TAG,"Map clicked");
 
         // update hint on map
-        isInsideDetArea = currentDistToHint>hintDetectionRadius? false:true;
+        isInsideDetArea = currentDistToHint> HINT_DETECTION_RADIUS ? false:true;
 
         if (isInsideDetArea){
             hintMarker.remove();
             hintCircle.remove();
-            btn_camera.performClick();//restore top fragment cover
+
+            //restore top fragment cover
+            btn_camera.performClick();
+
             if (!bossAreaFound){
                 currentHintNumber++;
-                if (currentHintNumber >= hintNumberNeeded){
+                if (currentHintNumber >= HINT_NUMBER_NEEDED){
                     bossAreaFound = true;
                     tv_hintFound.setTextColor(Color.RED);
                 } else {
                     bossAreaFound = false;
                     tv_hintFound.setTextColor(Color.WHITE);
                 }
-                tv_hintFound.setText(currentHintNumber+"/"+hintNumberNeeded);
+                tv_hintFound.setText(currentHintNumber+"/"+ HINT_NUMBER_NEEDED);
                 GenerateHint(currLocation);
-            } else {
-                //BossFight
-
             }
 
             isInsideDetArea = false;
-        }
-        else {
-
         }
     }
 
     public void GenerateHint(Location location) {
         int negFactor = Math.random()>0.5? -1:1;
-        float rngLat = (float) ((DIST_CLOSE + Math.random()) * (hintDetectionRadius * METER_IN_LATLNG_DEG * (1 + Math.random())) * negFactor);
+        float rngLat = (float) ((DIST_CLOSE + Math.random()) * (HINT_DETECTION_RADIUS * METER_IN_LATLNG_DEG * (1 + Math.random())) * negFactor);
         negFactor = Math.random()>0.5? -1:1;
-        float rngLong = (float) ((DIST_CLOSE + Math.random()) * (hintDetectionRadius * METER_IN_LATLNG_DEG * (1 + Math.random())) * negFactor);
+        float rngLong = (float) ((DIST_CLOSE + Math.random()) * (HINT_DETECTION_RADIUS * METER_IN_LATLNG_DEG * (1 + Math.random())) * negFactor);
 
         LatLng rngPos = new LatLng(location.getLatitude() + rngLat, location.getLongitude() +rngLong);
         MarkerOptions markerOptions = new MarkerOptions();
@@ -451,7 +449,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         circleOptions = new CircleOptions();
         circleOptions.center(new LatLng(currLocation.getLatitude() + rngLat,currLocation.getLongitude() +rngLong));
-        circleOptions.radius(hintDetectionRadius);
+        circleOptions.radius(HINT_DETECTION_RADIUS);
 
         if (!bossAreaFound){
             circleOptions.fillColor(Color.argb(64,240,240,240));
@@ -473,10 +471,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         markerLocation.setLongitude(markerLatLng.longitude);
 
         currentDistToHint = currLocation.distanceTo(markerLocation);
-
-        //tv_distToHint.setText(currentDistToHint/1000 + " k");
-
-        Log.i(TAG, "Detection Radius In Meter: " + hintDetectionRadius);
+        Log.i(TAG, "Detection Radius In Meter: " + HINT_DETECTION_RADIUS);
     }
 
     private String getTime() {
@@ -496,7 +491,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (sensor_m != null) sensorManager.registerListener(sensorEventListener, sensor_m, SensorManager.SENSOR_DELAY_UI);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            //updateLocation();
+            updateLocation();
 
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
@@ -559,6 +554,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         });
     }
 
+    private void shootToUser() {
+        AnchorNode anchorNode = new AnchorNode(bossAnchor);
+        TransformableNode bullet = new TransformableNode(arFragment.getTransformationSystem());
+        bullet.setParent(anchorNode);
+        bullet.setRenderable(renderables[BULLET_INDEX]);
+
+        AnchorNode endNode = new AnchorNode(bossAnchor);
+        endNode.setParent(scene);
+        endNode.setLocalPosition(scene.getCamera().getLocalPosition());
+
+        ObjectAnimator objectAnimation = new ObjectAnimator();
+        objectAnimation.setAutoCancel(true);
+        objectAnimation.setTarget(bullet);
+
+        objectAnimation.setObjectValues(bossNode.getWorldPosition(), endNode.getWorldPosition());
+        objectAnimation.setPropertyName("worldPosition");
+
+        objectAnimation.setEvaluator(new Vector3Evaluator());
+        objectAnimation.setInterpolator(new LinearInterpolator());
+        objectAnimation.setDuration(500);
+        objectAnimation.start();
+    }
+
     private void initHint(){
         arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
             Frame frame = arFragment.getArSceneView().getArFrame();
@@ -582,6 +600,67 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 }
             }
         });
+    }
+
+    private int[] screenPt = new int[2];
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        aimView.getLocationOnScreen(screenPt);
+    }
+    private HitTestResult sceneHitTest(float x, float y) {
+        Ray ray = scene.getCamera().screenPointToRay(x, y);
+        return scene.hitTest(ray);
+    }
+    private void shoot() {
+        Frame frame = arFragment.getArSceneView().getArFrame();
+        Camera camera = frame.getCamera();
+
+        if (camera.getTrackingState() != TrackingState.TRACKING) return;
+
+        // check if any scene node gets hit
+        HitTestResult sceneHit = sceneHitTest(screenPt[0], screenPt[1]);
+
+        if (sceneHit != null && sceneHit.getNode() != null) {
+            Node node = sceneHit.getNode();
+            Log.i("nodeHit", node.getName());
+            // only andy is our shooting target
+            if (node.getName().equals(modelNames[BOSS_INDEX])) {
+                removeNode(bossNode);
+
+            } else if (node.getName().equals(modelNames[HINT_INDEX])) {
+
+                // update hint on map
+                isInsideDetArea = currentDistToHint > HINT_DETECTION_RADIUS ? false:true;
+
+                if (isInsideDetArea){
+                    hintMarker.remove();
+                    hintCircle.remove();
+                    btn_camera.performClick();//restore top fragment cover
+                    if (!bossAreaFound){
+                        currentHintNumber++;
+                        if (currentHintNumber >= HINT_NUMBER_NEEDED){
+                            bossAreaFound = true;
+                            tv_hintFound.setTextColor(Color.RED);
+                        } else {
+                            bossAreaFound = false;
+                            tv_hintFound.setTextColor(Color.WHITE);
+                        }
+                        tv_hintFound.setText(currentHintNumber+"/"+ HINT_NUMBER_NEEDED);
+                        GenerateHint(currLocation);
+                    } else {
+                        //BossFight
+
+                    }
+
+                    isInsideDetArea = false;
+                } else {
+
+                }
+
+                removeNode(hintNode);
+            }
+        }
     }
 }
 
