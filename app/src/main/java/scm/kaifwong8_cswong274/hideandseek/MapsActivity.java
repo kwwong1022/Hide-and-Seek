@@ -48,6 +48,7 @@ import com.google.ar.sceneform.HitTestResult;
 import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.Scene;
 import com.google.ar.sceneform.collision.Ray;
+import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.math.Vector3Evaluator;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
@@ -62,6 +63,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int DEFAULT_UPDATE_INTERVAL = 5000, FAST_UPDATE_INTERVAL = 1000;
     private static final int FINE_LOCATION_REQUEST_CODE = 1;
     private static final int DIST_CLOSE = 1, DIST_MEDIUM = 3, DIST_FAR = 6;
+    private final int HINT_NUMBER_NEEDED = 3;
+    private final float HINT_DETECTION_RADIUS = 700;
     private static final double METER_IN_LATLNG_DEG = 0.00000661131;
     // services instance
     private GoogleMap mMap;
@@ -77,7 +80,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private AimView aimView;
     private DistToHintGraph distToHintGraph;
     private CircleOptions circleOptions;
-
+    // time & distance
     private int timeSecond = 0;
     private int score = 0;
     private float distance = 0, fullDistance = 0, totalSpd = 0;
@@ -85,16 +88,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private float heading = 0;
     private int currentHintNumber;
-    private final int HINT_NUMBER_NEEDED = 3;
     private float currentDistToHint;
-    private final float HINT_DETECTION_RADIUS = 700;
+    private boolean isCameraEnabled = true;
+    private boolean isShootAvailable, isShieldAvailable;
     private boolean bossAreaFound, isInsideDetArea = false;
     private Circle hintCircle;
     private Marker playerMarker, hintMarker;
-
     private CameraPosition cameraPosition;
-    private boolean isCameraEnabled = true;
-    private boolean isShootAvailable, isShieldAvailable;
 
     private SensorEventListener sensorEventListener = new SensorEventListener() {
         private float[] values_a = new float[3], values_m = new float[3];
@@ -157,11 +157,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    private void removeNode(Node node) {
-//        AnchorNode parent = (AnchorNode)node.getParent();
-//        parent.getAnchor().detach();
-//
-//        parent.removeChild(node);
+    private void removeNode(Node node, boolean deleteParent) {
+        if (deleteParent) {
+            AnchorNode parent = (AnchorNode)node.getParent();
+            parent.getAnchor().detach();
+            parent.removeChild(node);
+        }
+
         scene.removeChild(node);
     }
     /** END */
@@ -217,11 +219,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     tempLocation.setLongitude(tempLatLng.longitude);
 
 
-                    currentDistToHint = (float) (currLocation.distanceTo(tempLocation));
+                    currentDistToHint = currLocation.distanceTo(tempLocation);
                     float temp = (float) (Math.round(currentDistToHint/1000*10)/10d);
                     fullDistance = (float) (Math.round(currLocation.distanceTo(tempLocation)/1000*10)/10d);
                     tv_distToHint.setText("Distance to Hint: " + temp + " km");
-                    isInsideDetArea = currentDistToHint> HINT_DETECTION_RADIUS ? false:true;
+                    isInsideDetArea = currentDistToHint > HINT_DETECTION_RADIUS? false:true;
                     Log.i("Dist",currentDistToHint+" , "+ HINT_DETECTION_RADIUS);
                 }
             }
@@ -232,23 +234,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         scene = arFragment.getArSceneView().getScene();
         loadModels();
 
-
-
-        btn_shoot.setOnClickListener(v -> {
-            //shootToUser();
-            //shoot();
-
-        });
+        btn_shoot.setOnClickListener(v -> { shootToUser(); });
         // btn_shield.setOnClickListener(v -> defence());
         /**========================================== AR =========================================*/
 
         // Sensor
-        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        sensor_a = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        sensor_m = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        if (sensor_a == null) Log.e(TAG, "onCreateView: accelerometer not detected");
-        if (sensor_m == null) Log.e(TAG, "onCreateView: magnetic field sensor not detected");
-
+        {
+            sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+            sensor_a = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            sensor_m = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+            if (sensor_a == null) Log.e(TAG, "onCreateView: accelerometer not detected");
+            if (sensor_m == null) Log.e(TAG, "onCreateView: magnetic field sensor not detected");
+        }
         // UI
         btn_camera.setOnClickListener(v -> {
             // top fragment control rebuild?
@@ -301,19 +298,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         TimerTask uiTimerTask = new TimerTask() {
             @Override
             public void run() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        MapsActivity.this.tv_walkTime.setText("Adventure time: " + timeString);
-                        if (currLocation!=null) {
+                runOnUiThread(() -> {
+                    MapsActivity.this.tv_walkTime.setText("Adventure time: " + timeString);
+                    if (currLocation!=null) {
 
-                            MapsActivity.this.tv_walkDistance.setText("Distance: " + distance + " km");
+                        MapsActivity.this.tv_walkDistance.setText("Distance: " + distance + " km");
 
-                            if (isInsideDetArea){
-                                btn_camera.setEnabled(true);
-                            } else {
-                                btn_camera.setEnabled(false);
-                            }
+                        if (isInsideDetArea){
+                            btn_camera.setEnabled(true);
+                        } else {
+                            btn_camera.setEnabled(false);
                         }
                     }
                 });
@@ -341,14 +335,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
     }
-
     private void initLocationRequest() {
         locationRequest = LocationRequest.create();
         locationRequest.setInterval(DEFAULT_UPDATE_INTERVAL);
         locationRequest.setFastestInterval(FAST_UPDATE_INTERVAL);
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
-
     private void updateLocation() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
@@ -357,7 +349,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 updateMapCamera(location);
                 updateMarker(playerMarker, location);
 
-                if (location != null) {
+                if (location != null && playerMarker == null) {
 
                     playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
                             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
@@ -365,73 +357,76 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             });
         } else { ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_REQUEST_CODE); }
     }
-
+    // user marker
     private void updateMarker(Marker marker, Location location) {
         if (location != null && marker!= null) {
             marker.showInfoWindow();
             marker.setPosition(new LatLng(location.getLatitude(), location.getLongitude()));
         }
     }
-
+    // to user pos
     private void updateMapCamera(Location location) {
         if (location != null) {
             cameraPosition = new CameraPosition.Builder()
                     .target(new LatLng(location.getLatitude(), location.getLongitude()))
-                    .bearing(heading)   // degrees clockwise from north
+                    .bearing(heading)
                     .zoom(14)
                     .build();
             mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
     }
-
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        mMap.setOnMapClickListener(this);
+        //mMap.setOnMapClickListener(this);
 
-        try {
-            boolean success = mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this, R.raw.mapstyle));
-            if (!success) Log.e(TAG, "Style parsing failed.");
-        } catch (Exception e) { Log.e(TAG, "Can't find style. Error: ", e); }
-
-        mMap.getUiSettings().setCompassEnabled(false);
-        mMap.getUiSettings().setAllGesturesEnabled(true);
-        mMap.setBuildingsEnabled(false);
-        mMap.setTrafficEnabled(false);
-
-        updateLocation();
-        mMap.clear();
-    }
-
-    @Override
-    public void onMapClick(@NonNull LatLng latLng) {   //On map click is the testing function for AR clicking hints and AR clicking boss
-        Log.i(TAG,"Map clicked");
-
-        // update hint on map
-        isInsideDetArea = currentDistToHint> HINT_DETECTION_RADIUS ? false:true;
-
-        if (isInsideDetArea){
-            hintMarker.remove();
-            hintCircle.remove();
-
-            //restore top fragment cover
-            btn_camera.performClick();
-
-            if (!bossAreaFound){
-                currentHintNumber++;
-                if (currentHintNumber >= HINT_NUMBER_NEEDED){
-                    bossAreaFound = true;
-                    tv_hintFound.setTextColor(Color.RED);
-                } else {
-                    bossAreaFound = false;
-                    tv_hintFound.setTextColor(Color.WHITE);
-                }
-                tv_hintFound.setText(currentHintNumber+"/"+ HINT_NUMBER_NEEDED);
-                GenerateHint(currLocation);
+        // style & map basic setting
+        {
+            try {
+                boolean success = mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this, R.raw.mapstyle));
+                if (!success) Log.e(TAG, "Style parsing failed.");
+            } catch (Exception e) {
+                Log.e(TAG, "Can't find style. Error: ", e);
             }
 
-            isInsideDetArea = false;
+            mMap.getUiSettings().setCompassEnabled(false);
+            mMap.getUiSettings().setAllGesturesEnabled(true);
+            mMap.setBuildingsEnabled(false);
+            mMap.setTrafficEnabled(false);
+
+            updateLocation();
+            mMap.clear();
         }
+    }
+    @Override
+    public void onMapClick(@NonNull LatLng latLng) {   //On map click is the testing function for AR clicking hints and AR clicking boss
+//        Log.i(TAG,"Map clicked");
+//
+//        // update hint on map
+//        isInsideDetArea = currentDistToHint > HINT_DETECTION_RADIUS ? false:true;
+//
+//        if (isInsideDetArea){
+//            hintMarker.remove();
+//            hintCircle.remove();
+//
+//            //restore top fragment cover
+//            btn_camera.performClick();
+//
+//            if (!bossAreaFound){
+//                currentHintNumber++;
+//                if (currentHintNumber >= HINT_NUMBER_NEEDED){
+//                    bossAreaFound = true;
+//                    tv_hintFound.setTextColor(Color.RED);
+//                } else {
+//                    bossAreaFound = false;
+//                    tv_hintFound.setTextColor(Color.WHITE);
+//                }
+//                tv_hintFound.setText(currentHintNumber+"/"+ HINT_NUMBER_NEEDED);
+//                GenerateHint(currLocation);
+//            }
+//
+//            isInsideDetArea = false;
+//        }
     }
 
     public void GenerateHint(Location location) {
@@ -501,8 +496,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     updateMarker(playerMarker, location);
                     if (location != null) {
 
-                        playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
-                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                        //playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
+                                //.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
                     }
                 });
             } else { ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_REQUEST_CODE); }
@@ -510,7 +505,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallBack, null);
         }
     }
-
     @Override
     protected void onPause() {
         if (sensor_a != null) sensorManager.unregisterListener(sensorEventListener, sensor_a);
@@ -518,7 +512,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         super.onPause();
     }
-
     @Override
     protected void onDestroy() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -527,6 +520,31 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         super.onDestroy();
+    }
+
+    private void initHint(){
+        arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
+            Frame frame = arFragment.getArSceneView().getArFrame();
+            Camera camera = frame.getCamera();
+            Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
+
+            for (Plane plane : planes) {
+                if (camera.getTrackingState() != TrackingState.TRACKING) return;
+                if (plane.getTrackingState() == TrackingState.TRACKING) {
+                    Anchor anchor = plane.createAnchor(plane.getCenterPose());
+                    AnchorNode anchorNode = new AnchorNode(anchor);
+                    anchorNode.setParent(scene);
+
+                    if (!isHintGenerated) {
+                        hintNode = new HintNode(arFragment.getTransformationSystem());
+                        hintNode.setParent(anchorNode);
+                        hintNode.setName(modelNames[HINT_INDEX]);
+                        hintNode.setRenderable(renderables[HINT_INDEX]);
+                        isHintGenerated = !isHintGenerated;
+                    }
+                }
+            }
+        });
     }
 
     private void initBoss(){
@@ -577,31 +595,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         objectAnimation.start();
     }
 
-    private void initHint(){
-        arFragment.getArSceneView().getScene().addOnUpdateListener(frameTime -> {
-            Frame frame = arFragment.getArSceneView().getArFrame();
-            Camera camera = frame.getCamera();
-            Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
-
-            for (Plane plane : planes) {
-                if (camera.getTrackingState() != TrackingState.TRACKING) return;
-                if (plane.getTrackingState() == TrackingState.TRACKING) {
-                    Anchor anchor = plane.createAnchor(plane.getCenterPose());
-                    AnchorNode anchorNode = new AnchorNode(anchor);
-                    anchorNode.setParent(scene);
-
-                    if (!isHintGenerated) {
-                        hintNode = new HintNode(arFragment.getTransformationSystem());
-                        hintNode.setParent(anchorNode);
-                        hintNode.setName(modelNames[HINT_INDEX]);
-                        hintNode.setRenderable(renderables[HINT_INDEX]);
-                        isHintGenerated = !isHintGenerated;
-                    }
-                }
-            }
-        });
-    }
-
     private int[] screenPt = new int[2];
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
@@ -623,44 +616,55 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         if (sceneHit != null && sceneHit.getNode() != null) {
             Node node = sceneHit.getNode();
-            Log.i("nodeHit", node.getName());
+
             // only andy is our shooting target
-            if (node.getName().equals(modelNames[BOSS_INDEX])) {
-                removeNode(bossNode);
+            if (node.getName().equals(modelNames[HINT_INDEX])) {
 
-            } else if (node.getName().equals(modelNames[HINT_INDEX])) {
+            } else if (node.getName().equals(modelNames[BOSS_INDEX])) {
 
-                // update hint on map
-                isInsideDetArea = currentDistToHint > HINT_DETECTION_RADIUS ? false:true;
-
-                if (isInsideDetArea){
-                    hintMarker.remove();
-                    hintCircle.remove();
-                    btn_camera.performClick();//restore top fragment cover
-                    if (!bossAreaFound){
-                        currentHintNumber++;
-                        if (currentHintNumber >= HINT_NUMBER_NEEDED){
-                            bossAreaFound = true;
-                            tv_hintFound.setTextColor(Color.RED);
-                        } else {
-                            bossAreaFound = false;
-                            tv_hintFound.setTextColor(Color.WHITE);
-                        }
-                        tv_hintFound.setText(currentHintNumber+"/"+ HINT_NUMBER_NEEDED);
-                        GenerateHint(currLocation);
-                    } else {
-                        //BossFight
-
-                    }
-
-                    isInsideDetArea = false;
-                } else {
-
-                }
-
-                removeNode(hintNode);
             }
         }
+
+//        if (sceneHit != null && sceneHit.getNode() != null) {
+//            Node node = sceneHit.getNode();
+//            Log.i("nodeHit", node.getName());
+//            // only andy is our shooting target
+//            if (node.getName().equals(modelNames[BOSS_INDEX])) {
+//                removeNode(bossNode);
+//
+//            } else if (node.getName().equals(modelNames[HINT_INDEX])) {
+//
+//                // update hint on map
+//                isInsideDetArea = currentDistToHint > HINT_DETECTION_RADIUS ? false:true;
+//
+//                if (isInsideDetArea){
+//                    hintMarker.remove();
+//                    hintCircle.remove();
+//                    btn_camera.performClick();//restore top fragment cover
+//                    if (!bossAreaFound){
+//                        currentHintNumber++;
+//                        if (currentHintNumber >= HINT_NUMBER_NEEDED){
+//                            bossAreaFound = true;
+//                            tv_hintFound.setTextColor(Color.RED);
+//                        } else {
+//                            bossAreaFound = false;
+//                            tv_hintFound.setTextColor(Color.WHITE);
+//                        }
+//                        tv_hintFound.setText(currentHintNumber+"/"+ HINT_NUMBER_NEEDED);
+//                        GenerateHint(currLocation);
+//                    } else {
+//                        //BossFight
+//
+//                    }
+//
+//                    isInsideDetArea = false;
+//                } else {
+//
+//                }
+//
+//                removeNode(hintNode);
+//            }
+//        }
     }
 }
 
