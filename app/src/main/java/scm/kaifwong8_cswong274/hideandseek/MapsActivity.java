@@ -46,6 +46,7 @@ import com.google.ar.core.Camera;
 import com.google.ar.core.Frame;
 import com.google.ar.core.Plane;
 import com.google.ar.core.TrackingState;
+import com.google.ar.core.exceptions.CameraNotAvailableException;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.HitTestResult;
 import com.google.ar.sceneform.Node;
@@ -333,9 +334,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         if (isInsideDetArea){
                             btn_camera.setEnabled(true);
                             tv_cameraState.setText("Camera Ready");
+                            try {
+                                arFragment.getArSceneView().resume();
+                            } catch (CameraNotAvailableException e) {
+                                e.printStackTrace();
+                            }
                         } else {
                             btn_camera.setEnabled(false);
                             tv_cameraState.setText("Camera Not Ready");
+                            arFragment.getArSceneView().pause();
                         }
                     }
                 });
@@ -640,24 +647,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             } else if (node.getName().equals(modelNames[BOSS_INDEX])) {
                 // - boss hp
-                // demo only
-                bossHP -= 400;
-            }
-
-            if (bossHP <=0) {
-                removeNode(bossNode, true);
-                new Timer().schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        Intent i = new Intent(MapsActivity.this, ResultActivity.class);
-                        // putExtra
-                        i.putExtra("TIME_STRING", timeString);
-                        i.putExtra("DISTANCE", distance);
-                        i.putExtra("TIME_SECOND", timeSecond);
-                        startActivity(i);
-                        finish();
-                    }
-                }, 1000);
+//                bossHP -= 400;
+                removeNode(bossNode, false);
+//                Intent i = new Intent(MapsActivity.this, ResultActivity.class);
+//                // putExtra
+//                i.putExtra("TIME_STRING", timeString);
+//                i.putExtra("DISTANCE", distance);
+//                i.putExtra("TIME_SECOND", timeSecond);
+//                startActivity(i);
             }
         }
     }
