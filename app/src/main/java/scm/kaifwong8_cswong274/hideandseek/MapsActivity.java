@@ -8,6 +8,7 @@ import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
 import android.animation.ObjectAnimator;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -57,6 +58,7 @@ import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 
 import java.util.Collection;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -86,15 +88,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ConstraintLayout.LayoutParams topFragmentParams;
     // time & distance
     private int timeSecond = 0;
-    private int diffDist = 1, score = 0;
+    private int diffDist = 1;
     private float distance = 0, fullDistance = 0, totalSpd = 0;
     private String timeString = "00:00:00";
+
+    private int score = 0, bossHP = 999;
 
     private float heading = 0;
     private int currentHintNumber;
     private float currentDistToHint;
     private boolean isCameraEnabled = false;
-    private boolean isShootAvailable, isShieldAvailable;
     private boolean bossAreaFound, isInsideDetArea = false;
     private Circle hintCircle;
     private Marker playerMarker, hintMarker;
@@ -217,7 +220,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             tv_hintFound.setText("Hint Found: " + currentHintNumber + "/" + HINT_NUMBER_NEEDED);   // move to other place? generate hint?
         }
 
-        uiContainer.setTranslationY(5000);
+        //uiContainer.setTranslationY(5000);
         topFragmentParams.matchConstraintPercentHeight = !MapsActivity.this.isCameraEnabled? (float)1:(float)0;
         topFragmentContainer.setLayoutParams(topFragmentParams);
 
@@ -257,7 +260,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         scene = arFragment.getArSceneView().getScene();
         loadModels();
 
-        btn_shoot.setOnClickListener(v -> { shootToUser(); });
+        //initBoss();
+
+        btn_shoot.setOnClickListener(v -> {
+            shoot();
+        });
         // btn_shield.setOnClickListener(v -> defence());
         /**========================================== AR =========================================*/
 
@@ -313,6 +320,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }, 1000, 1000);
 
         Timer uiTimer = new Timer();
+        TextView tv_cameraState = findViewById(R.id.tv_camera_status);
         TimerTask uiTimerTask = new TimerTask() {
             @Override
             public void run() {
@@ -324,8 +332,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                         if (isInsideDetArea){
                             btn_camera.setEnabled(true);
+                            tv_cameraState.setText("Camera Ready");
                         } else {
-                            //btn_camera.setEnabled(false);
+                            btn_camera.setEnabled(false);
+                            tv_cameraState.setText("Camera Not Ready");
                         }
                     }
                 });
@@ -437,12 +447,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             circleOptions.fillColor(Color.argb(64,240,240,240));
             circleOptions.strokeColor(Color.argb(255,240,240,240));
             circleOptions.strokeWidth(6);
-
         } else {
             circleOptions.fillColor(Color.argb(64,240,20,20));
             circleOptions.strokeColor(Color.argb(255,240,240,240));
             circleOptions.strokeWidth(10);
-
         }
 
         hintCircle = mMap.addCircle(circleOptions);
@@ -485,6 +493,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             } else { ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_REQUEST_CODE); }
             Log.d(TAG, "onDestroy: locationCallBack requested");
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallBack, null);
+            //fusedLocationClient.removeLocationUpdates(locationCallBack);
         }
     }
     @Override
@@ -513,6 +522,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         hintNode.setParent(anchorNode);
                         hintNode.setName(modelNames[HINT_INDEX]);
                         hintNode.setRenderable(renderables[HINT_INDEX]);
+                        Random random = new Random();
+                        Vector3 tempV = new Vector3();
+                        int negFactor;
+                        negFactor = random.nextInt(3) > 1? 1:-1;
+                        tempV.x += (hintNode.getLocalPosition().x + random.nextInt(4) +1) * negFactor;
+                        negFactor = random.nextInt(3) > 1? 1:-1;
+                        tempV.y += hintNode.getLocalPosition().y;
+                        tempV.z += (hintNode.getLocalPosition().z + random.nextInt(4) +1) * negFactor;
+                        hintNode.setLocalPosition(tempV);
                         isHintGenerated = !isHintGenerated;
                     }
                 }
@@ -538,6 +556,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         bossNode.setParent(anchorNode);
                         bossNode.setName(modelNames[BOSS_INDEX]);
                         bossNode.setRenderable(renderables[BOSS_INDEX]);
+                        Random random = new Random();
+                        Vector3 tempV = new Vector3();
+                        int negFactor;
+                        negFactor = random.nextInt(3) > 1? 1:-1;
+                        tempV.x += (bossNode.getLocalPosition().x + random.nextInt(4) +1) * negFactor;
+                        negFactor = random.nextInt(3) > 1? 1:-1;
+                        tempV.y += bossNode.getLocalPosition().y;
+                        tempV.z += (bossNode.getLocalPosition().z + random.nextInt(4) +1) * negFactor;
+                        bossNode.setLocalPosition(tempV);
                         isBossGenerated = !isBossGenerated;
                     }
                 }
@@ -546,26 +573,27 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void shootToUser() {
-        AnchorNode anchorNode = new AnchorNode(bossAnchor);
-        TransformableNode bullet = new TransformableNode(arFragment.getTransformationSystem());
-        bullet.setParent(anchorNode);
-        bullet.setRenderable(renderables[BULLET_INDEX]);
+        Frame frame = arFragment.getArSceneView().getArFrame();
+        Camera camera = frame.getCamera();
+        Collection<Plane> planes = frame.getUpdatedTrackables(Plane.class);
+        Node bulletNode;
+        AnchorNode startNode, endNode;
 
-        AnchorNode endNode = new AnchorNode(bossAnchor);
-        endNode.setParent(scene);
-        endNode.setLocalPosition(scene.getCamera().getLocalPosition());
+        for (Plane plane : planes) {
+            if (camera.getTrackingState() != TrackingState.TRACKING) return;
 
-        ObjectAnimator objectAnimation = new ObjectAnimator();
-        objectAnimation.setAutoCancel(true);
-        objectAnimation.setTarget(bullet);
+            if (plane.getTrackingState() == TrackingState.TRACKING) {
+                Anchor anchor = plane.createAnchor(plane.getCenterPose());
+                AnchorNode anchorNode = new AnchorNode(anchor);
+                anchorNode.setParent(scene);
 
-        objectAnimation.setObjectValues(bossNode.getWorldPosition(), endNode.getWorldPosition());
-        objectAnimation.setPropertyName("worldPosition");
-
-        objectAnimation.setEvaluator(new Vector3Evaluator());
-        objectAnimation.setInterpolator(new LinearInterpolator());
-        objectAnimation.setDuration(500);
-        objectAnimation.start();
+                bulletNode = new BulletNode(arFragment.getTransformationSystem());
+                bulletNode.setParent(anchorNode);
+                bulletNode.setName(modelNames[BULLET_INDEX]);
+                bulletNode.setRenderable(renderables[BULLET_INDEX]);
+                bulletNode.setWorldPosition(bossNode.getWorldPosition());
+            }
+        }
     }
 
     private int[] screenPt = new int[2];
@@ -586,58 +614,52 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         // check if any scene node gets hit
         HitTestResult sceneHit = sceneHitTest(screenPt[0], screenPt[1]);
-
         if (sceneHit != null && sceneHit.getNode() != null) {
             Node node = sceneHit.getNode();
 
-            // only andy is our shooting target
             if (node.getName().equals(modelNames[HINT_INDEX])) {
+                // update hint on map
+
+                if (isInsideDetArea) {
+                    hintMarker.remove();
+                    hintCircle.remove();
+                    btn_camera.performClick();
+
+                    if (!bossAreaFound){
+                        currentHintNumber++;
+                        tv_hintFound.setText(currentHintNumber+"/"+ HINT_NUMBER_NEEDED);
+                        bossAreaFound = currentHintNumber >= HINT_NUMBER_NEEDED? true:false;
+                        GenerateHint(currLocation);
+                    }
+
+                    isInsideDetArea = false;
+                }
+
+                boolean deleteParent = currentHintNumber < HINT_NUMBER_NEEDED? false:true;
+                removeNode(hintNode, deleteParent);
 
             } else if (node.getName().equals(modelNames[BOSS_INDEX])) {
+                // - boss hp
+                // demo only
+                bossHP -= 400;
+            }
 
+            if (bossHP <=0) {
+                removeNode(bossNode, true);
+                new Timer().schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        Intent i = new Intent(MapsActivity.this, ResultActivity.class);
+                        // putExtra
+                        i.putExtra("TIME_STRING", timeString);
+                        i.putExtra("DISTANCE", distance);
+                        i.putExtra("TIME_SECOND", timeSecond);
+                        startActivity(i);
+                        finish();
+                    }
+                }, 1000);
             }
         }
-
-//        if (sceneHit != null && sceneHit.getNode() != null) {
-//            Node node = sceneHit.getNode();
-//            Log.i("nodeHit", node.getName());
-//            // only andy is our shooting target
-//            if (node.getName().equals(modelNames[BOSS_INDEX])) {
-//                removeNode(bossNode);
-//
-//            } else if (node.getName().equals(modelNames[HINT_INDEX])) {
-//
-//                // update hint on map
-//                isInsideDetArea = currentDistToHint > HINT_DETECTION_RADIUS ? false:true;
-//
-//                if (isInsideDetArea){
-//                    hintMarker.remove();
-//                    hintCircle.remove();
-//                    btn_camera.performClick();//restore top fragment cover
-//                    if (!bossAreaFound){
-//                        currentHintNumber++;
-//                        if (currentHintNumber >= HINT_NUMBER_NEEDED){
-//                            bossAreaFound = true;
-//                            tv_hintFound.setTextColor(Color.RED);
-//                        } else {
-//                            bossAreaFound = false;
-//                            tv_hintFound.setTextColor(Color.WHITE);
-//                        }
-//                        tv_hintFound.setText(currentHintNumber+"/"+ HINT_NUMBER_NEEDED);
-//                        GenerateHint(currLocation);
-//                    } else {
-//                        //BossFight
-//
-//                    }
-//
-//                    isInsideDetArea = false;
-//                } else {
-//
-//                }
-//
-//                removeNode(hintNode);
-//            }
-//        }
     }
 }
 
