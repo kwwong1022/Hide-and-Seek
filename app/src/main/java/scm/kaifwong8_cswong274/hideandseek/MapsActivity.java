@@ -68,7 +68,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int DEFAULT_UPDATE_INTERVAL = 5000, FAST_UPDATE_INTERVAL = 1000;
     private static final int FINE_LOCATION_REQUEST_CODE = 1;
     private static final int DIST_CLOSE = 1, DIST_MEDIUM = 3, DIST_FAR = 6;
-    private final int HINT_NUMBER_NEEDED = 3;
+    private final int HINT_NUMBER_NEEDED = 1;
     private final float HINT_DETECTION_RADIUS = 700;
     private static final double METER_IN_LATLNG_DEG = 0.00000661131;
     // services instance
@@ -94,6 +94,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private String timeString = "00:00:00";
 
     private int score = 0, bossHP = 999;
+    private boolean isBossDefeated = false;
 
     private float heading = 0;
     private int currentHintNumber;
@@ -317,6 +318,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     float temp = (fullDistance-currentDistToHint);
                     distToHintGraph.setDistMark(fullDistance - HINT_DETECTION_RADIUS, temp - HINT_DETECTION_RADIUS/2);
                 }
+
+                if (isBossDefeated) {
+                    Log.d(TAG, "isBossDefeated: true; finished");
+                    Intent i = new Intent(MapsActivity.this, ResultActivity.class);
+                    // putExtra
+                    i.putExtra("TIME_STRING", timeString);
+                    i.putExtra("DISTANCE", distance);
+                    i.putExtra("TIME_SECOND", timeSecond);
+                    startActivity(i);
+                    isBossDefeated = false;
+                    finish();
+                }
             }
         }, 1000, 1000);
 
@@ -532,9 +545,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         Random random = new Random();
                         Vector3 tempV = new Vector3();
                         int negFactor;
-                        negFactor = random.nextInt(3) > 1? 1:-1;
+                        negFactor = random.nextInt(3) > 1? 1:1;
                         tempV.x += (hintNode.getLocalPosition().x + random.nextInt(4) +1) * negFactor;
-                        negFactor = random.nextInt(3) > 1? 1:-1;
+                        negFactor = random.nextInt(3) > 1? 1:1;
                         tempV.y += hintNode.getLocalPosition().y;
                         tempV.z += (hintNode.getLocalPosition().z + random.nextInt(4) +1) * negFactor;
                         hintNode.setLocalPosition(tempV);
@@ -566,9 +579,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         Random random = new Random();
                         Vector3 tempV = new Vector3();
                         int negFactor;
-                        negFactor = random.nextInt(3) > 1? 1:-1;
+                        negFactor = random.nextInt(3) > 1? 1:1;
                         tempV.x += (bossNode.getLocalPosition().x + random.nextInt(4) +1) * negFactor;
-                        negFactor = random.nextInt(3) > 1? 1:-1;
+                        negFactor = random.nextInt(3) > 1? 1:1;
                         tempV.y += bossNode.getLocalPosition().y;
                         tempV.z += (bossNode.getLocalPosition().z + random.nextInt(4) +1) * negFactor;
                         bossNode.setLocalPosition(tempV);
@@ -634,7 +647,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                     if (!bossAreaFound){
                         currentHintNumber++;
-                        tv_hintFound.setText(currentHintNumber+"/"+ HINT_NUMBER_NEEDED);
+                        tv_hintFound.setText("Hint Found: " + currentHintNumber+"/"+ HINT_NUMBER_NEEDED);
                         bossAreaFound = currentHintNumber >= HINT_NUMBER_NEEDED? true:false;
                         GenerateHint(currLocation);
                     }
@@ -647,14 +660,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             } else if (node.getName().equals(modelNames[BOSS_INDEX])) {
                 // - boss hp
-//                bossHP -= 400;
-                removeNode(bossNode, false);
-//                Intent i = new Intent(MapsActivity.this, ResultActivity.class);
-//                // putExtra
-//                i.putExtra("TIME_STRING", timeString);
-//                i.putExtra("DISTANCE", distance);
-//                i.putExtra("TIME_SECOND", timeSecond);
-//                startActivity(i);
+                bossHP -= 400;
+                isBossDefeated = true;
+                Log.d(TAG, "boss hit");
+                removeNode(bossNode, true);
+                isInsideDetArea = false;
+                arFragment.onDestroy();
             }
         }
     }
