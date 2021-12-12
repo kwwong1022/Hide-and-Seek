@@ -19,7 +19,7 @@ public class AimView extends View {
 
     private void init() {
         this.first = true;
-        this.isHide = true;
+        this.isHide = false;
         this.paint = new Paint();
         this.paint.setStyle(Paint.Style.STROKE);
         this.paint.setStrokeWidth(3);

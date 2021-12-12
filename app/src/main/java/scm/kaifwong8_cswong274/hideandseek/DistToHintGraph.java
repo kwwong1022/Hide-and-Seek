@@ -48,7 +48,6 @@ public class DistToHintGraph extends View {
             this.paint.setColor(Color.rgb(51, 201, 255));
             canvas.drawCircle(normalDist, height-height/2, height/5, paint);
         }
-
     }
 
     public void toggleInBossArea() {
@@ -56,6 +55,8 @@ public class DistToHintGraph extends View {
     }
 
     public void setDistMark(float fullDist, float currDist) {
+        if (currDist > fullDist) currDist = fullDist;
+        if (currDist < 0) currDist = 0;
         normalDist = (currDist - 0) / (fullDist - 0) * (width - 0);
         invalidate();
     }

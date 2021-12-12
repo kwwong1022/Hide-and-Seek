@@ -2,11 +2,13 @@ package scm.kaifwong8_cswong274.hideandseek;
 
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.constraintlayout.widget.Guideline;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
 import android.animation.ObjectAnimator;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.hardware.Sensor;
@@ -58,7 +60,7 @@ import java.util.Collection;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
     private static final String TAG = "MapsActivity";
     private static final int DEFAULT_UPDATE_INTERVAL = 5000, FAST_UPDATE_INTERVAL = 1000;
     private static final int FINE_LOCATION_REQUEST_CODE = 1;
@@ -80,16 +82,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private AimView aimView;
     private DistToHintGraph distToHintGraph;
     private CircleOptions circleOptions;
+    private ConstraintLayout topFragmentContainer, uiContainer;
+    private ConstraintLayout.LayoutParams topFragmentParams;
     // time & distance
     private int timeSecond = 0;
-    private int score = 0;
+    private int diffDist = 1, score = 0;
     private float distance = 0, fullDistance = 0, totalSpd = 0;
     private String timeString = "00:00:00";
 
     private float heading = 0;
     private int currentHintNumber;
     private float currentDistToHint;
-    private boolean isCameraEnabled = true;
+    private boolean isCameraEnabled = false;
     private boolean isShootAvailable, isShieldAvailable;
     private boolean bossAreaFound, isInsideDetArea = false;
     private Circle hintCircle;
@@ -175,8 +179,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        //game diff
+        SharedPreferences sharedPreferences = getSharedPreferences("settingPreferences", MODE_PRIVATE);
+        switch (sharedPreferences.getInt("GAME_DIFFICULTY", MainActivity.DIFFICULTY_EASY)) {
+            case MainActivity.DIFFICULTY_EASY:
+                diffDist = DIST_CLOSE;
+                break;
+            case MainActivity.DIFFICULTY_MEDIUM:
+                diffDist = DIST_MEDIUM;
+                break;
+            case MainActivity.DIFFICULTY_HARD:
+                diffDist = DIST_FAR;
+                break;
+        }
         // init view
-        ConstraintLayout ui_background = findViewById(R.id.ui_background);
         FloatingActionButton btn_shoot = findViewById(R.id.btn_shoot);
         FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
         btn_camera = (FloatingActionButton) findViewById(R.id.btn_camera);
@@ -186,17 +202,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         tv_hintFound = topFragment.getView().findViewById(R.id.tv_hintFound);
         tv_walkDistance = topFragment.getView().findViewById(R.id.tv_walk_distance);
         tv_walkTime = topFragment.getView().findViewById(R.id.tv_walk_time);
+        uiContainer = findViewById(R.id.ui_container);
+        topFragmentContainer = MapsActivity.this.findViewById(R.id.top_fragment);
+        topFragmentParams = (ConstraintLayout.LayoutParams) topFragmentContainer.getLayoutParams();
+        // customView & tv_init
+        {
+            ConstraintLayout aimViewContainer = findViewById(R.id.aim_view_container);
+            this.aimView = new AimView(this);
+            aimViewContainer.addView(aimView);
+            ConstraintLayout distToHintGraphContainer = topFragment.getView().findViewById(R.id.distToHint_container);
+            this.distToHintGraph = new DistToHintGraph(this);
+            distToHintGraphContainer.addView(distToHintGraph);
+            // tv_init
+            tv_hintFound.setText("Hint Found: " + currentHintNumber + "/" + HINT_NUMBER_NEEDED);   // move to other place? generate hint?
+        }
 
-        // customView
-        ConstraintLayout aimViewContainer = findViewById(R.id.aim_view_container);
-        this.aimView = new AimView(this);
-        aimViewContainer.addView(aimView);
-        ConstraintLayout distToHintGraphContainer = topFragment.getView().findViewById(R.id.distToHint_container);
-        this.distToHintGraph = new DistToHintGraph(this);
-        distToHintGraphContainer.addView(distToHintGraph);
-
-        // tv_init
-        tv_hintFound.setText("Hint Found: " + currentHintNumber + "/" + HINT_NUMBER_NEEDED);   // move to other place? generate hint?
+        uiContainer.setTranslationY(5000);
+        topFragmentParams.matchConstraintPercentHeight = !MapsActivity.this.isCameraEnabled? (float)1:(float)0;
+        topFragmentContainer.setLayoutParams(topFragmentParams);
 
         // Location
         initLocationRequest();
@@ -221,7 +244,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                     currentDistToHint = currLocation.distanceTo(tempLocation);
                     float temp = (float) (Math.round(currentDistToHint/1000*10)/10d);
-                    fullDistance = (float) (Math.round(currLocation.distanceTo(tempLocation)/1000*10)/10d);
+                    if (fullDistance==0) fullDistance = (float) (Math.round(currLocation.distanceTo(tempLocation)*10)/10d);
                     tv_distToHint.setText("Distance to Hint: " + temp + " km");
                     isInsideDetArea = currentDistToHint > HINT_DETECTION_RADIUS? false:true;
                     Log.i("Dist",currentDistToHint+" , "+ HINT_DETECTION_RADIUS);
@@ -246,15 +269,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             if (sensor_a == null) Log.e(TAG, "onCreateView: accelerometer not detected");
             if (sensor_m == null) Log.e(TAG, "onCreateView: magnetic field sensor not detected");
         }
+
         // UI
         btn_camera.setOnClickListener(v -> {
             // top fragment control rebuild?
-            ConstraintLayout mConstrainLayout = (ConstraintLayout) findViewById(R.id.top_fragment);
-            ConstraintLayout.LayoutParams lp = (ConstraintLayout.LayoutParams) mConstrainLayout.getLayoutParams();
-
-            lp.matchConstraintPercentHeight = !isCameraEnabled? (float)1:(float)0;
-            mConstrainLayout.setLayoutParams(lp);
+            topFragmentParams.matchConstraintPercentHeight = !MapsActivity.this.isCameraEnabled? (float)1:(float)0;
+            topFragmentContainer.setLayoutParams(topFragmentParams);
             isCameraEnabled = !isCameraEnabled;
+
+            if (isCameraEnabled) {
+                uiContainer.setTranslationY(0);
+            } else { uiContainer.setTranslationY(5000); }
+
             aimView.toggleHide();
 
             if (!bossAreaFound){
@@ -268,15 +294,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         btn_map_focus.setOnClickListener(v -> mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition)) );
 
-        // one time timer
-        new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                btn_camera.performClick();
-                btn_camera.performClick();
-            }
-        }, 10);
-
         // Timer - 1s
         Timer secondTimer = new Timer();
         secondTimer.schedule(new TimerTask() {
@@ -289,7 +306,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     totalSpd+=currLocation.getSpeed();
                     distance = (float) (Math.round((totalSpd/timeSecond/3600) * timeSecond*10)/10.d);
                     // distToHintGraph update
-                    distToHintGraph.setDistMark(fullDistance, currentDistToHint);
+                    float temp = (fullDistance-currentDistToHint);
+                    distToHintGraph.setDistMark(fullDistance - HINT_DETECTION_RADIUS, temp - HINT_DETECTION_RADIUS/2);
                 }
             }
         }, 1000, 1000);
@@ -307,7 +325,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         if (isInsideDetArea){
                             btn_camera.setEnabled(true);
                         } else {
-                            btn_camera.setEnabled(false);
+                            //btn_camera.setEnabled(false);
                         }
                     }
                 });
@@ -378,7 +396,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        //mMap.setOnMapClickListener(this);
 
         // style & map basic setting
         {
@@ -398,42 +415,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMap.clear();
         }
     }
-    @Override
-    public void onMapClick(@NonNull LatLng latLng) {   //On map click is the testing function for AR clicking hints and AR clicking boss
-//        Log.i(TAG,"Map clicked");
-//
-//        // update hint on map
-//        isInsideDetArea = currentDistToHint > HINT_DETECTION_RADIUS ? false:true;
-//
-//        if (isInsideDetArea){
-//            hintMarker.remove();
-//            hintCircle.remove();
-//
-//            //restore top fragment cover
-//            btn_camera.performClick();
-//
-//            if (!bossAreaFound){
-//                currentHintNumber++;
-//                if (currentHintNumber >= HINT_NUMBER_NEEDED){
-//                    bossAreaFound = true;
-//                    tv_hintFound.setTextColor(Color.RED);
-//                } else {
-//                    bossAreaFound = false;
-//                    tv_hintFound.setTextColor(Color.WHITE);
-//                }
-//                tv_hintFound.setText(currentHintNumber+"/"+ HINT_NUMBER_NEEDED);
-//                GenerateHint(currLocation);
-//            }
-//
-//            isInsideDetArea = false;
-//        }
-    }
 
     public void GenerateHint(Location location) {
         int negFactor = Math.random()>0.5? -1:1;
-        float rngLat = (float) ((DIST_CLOSE + Math.random()) * (HINT_DETECTION_RADIUS * METER_IN_LATLNG_DEG * (1 + Math.random())) * negFactor);
+        float rngLat = (float) ((diffDist + Math.random()) * (HINT_DETECTION_RADIUS * METER_IN_LATLNG_DEG * (1 + Math.random())) * negFactor);
         negFactor = Math.random()>0.5? -1:1;
-        float rngLong = (float) ((DIST_CLOSE + Math.random()) * (HINT_DETECTION_RADIUS * METER_IN_LATLNG_DEG * (1 + Math.random())) * negFactor);
+        float rngLong = (float) ((diffDist + Math.random()) * (HINT_DETECTION_RADIUS * METER_IN_LATLNG_DEG * (1 + Math.random())) * negFactor);
 
         LatLng rngPos = new LatLng(location.getLatitude() + rngLat, location.getLongitude() +rngLong);
         MarkerOptions markerOptions = new MarkerOptions();
@@ -494,11 +481,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
                     updateMapCamera(location);
                     updateMarker(playerMarker, location);
-                    if (location != null) {
-
-                        //playerMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(), location.getLongitude()))
-                                //.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-                    }
                 });
             } else { ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, FINE_LOCATION_REQUEST_CODE); }
             Log.d(TAG, "onDestroy: locationCallBack requested");
@@ -511,15 +493,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (sensor_m != null) sensorManager.unregisterListener(sensorEventListener, sensor_m);
 
         super.onPause();
-    }
-    @Override
-    protected void onDestroy() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "onDestroy: locationCallBack removed");
-            fusedLocationClient.removeLocationUpdates(locationCallBack);
-        }
-
-        super.onDestroy();
     }
 
     private void initHint(){
