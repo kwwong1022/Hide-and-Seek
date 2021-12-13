@@ -20,6 +20,7 @@ import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.animation.LinearInterpolator;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -68,7 +69,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int DEFAULT_UPDATE_INTERVAL = 5000, FAST_UPDATE_INTERVAL = 1000;
     private static final int FINE_LOCATION_REQUEST_CODE = 1;
     private static final int DIST_CLOSE = 1, DIST_MEDIUM = 3, DIST_FAR = 6;
-    private final int HINT_NUMBER_NEEDED = 1;
+    private final int HINT_NUMBER_NEEDED = 2;
     private final float HINT_DETECTION_RADIUS = 700;
     private static final double METER_IN_LATLNG_DEG = 0.00000661131;
     // services instance
@@ -85,7 +86,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private AimView aimView;
     private DistToHintGraph distToHintGraph;
     private CircleOptions circleOptions;
-    private ConstraintLayout topFragmentContainer, uiContainer;
+    private ConstraintLayout topFragmentContainer, uiContainer, resultContainer;
     private ConstraintLayout.LayoutParams topFragmentParams;
     // time & distance
     private int timeSecond = 0;
@@ -94,7 +95,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private String timeString = "00:00:00";
 
     private int score = 0, bossHP = 999;
-    private boolean isBossDefeated = false;
+    private boolean isBossDefeated = false, isResultShown = false;
 
     private float heading = 0;
     private int currentHintNumber;
@@ -145,7 +146,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private final int[] models = {R.raw.ufo, R.raw.boss, R.raw.origami_fish, R.raw.dog_standing};
     private final String[] modelNames = {"Hint", "Boss", "Bullet", "Shield"};
     private ModelRenderable[] renderables = new ModelRenderable[models.length];
-    private FloatingActionButton btn_camera;
+    private FloatingActionButton btn_camera, btn_shoot, btn_map_focus;
     private Anchor bossAnchor;
     private TransformableNode hintNode, bossNode;
     private boolean isHintGenerated, isBossGenerated = false;
@@ -198,10 +199,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 break;
         }
         // init view
-        FloatingActionButton btn_shoot = findViewById(R.id.btn_shoot);
-        FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
+        btn_shoot = findViewById(R.id.btn_shoot);
+//        FloatingActionButton btn_shield = findViewById(R.id.btn_shield);
         btn_camera = (FloatingActionButton) findViewById(R.id.btn_camera);
-        FloatingActionButton btn_map_focus = findViewById(R.id.btn_map_focus);
+        btn_map_focus = findViewById(R.id.btn_map_focus);
         topFragment = (TopFragment) getSupportFragmentManager().findFragmentById(R.id.top_fragment);
         tv_distToHint = topFragment.getView().findViewById(R.id.tv_distToHint);
         tv_hintFound = topFragment.getView().findViewById(R.id.tv_hintFound);
@@ -210,6 +211,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         uiContainer = findViewById(R.id.ui_container);
         topFragmentContainer = MapsActivity.this.findViewById(R.id.top_fragment);
         topFragmentParams = (ConstraintLayout.LayoutParams) topFragmentContainer.getLayoutParams();
+        Button btn_finish = findViewById(R.id.btn_result_finish);
         // customView & tv_init
         {
             ConstraintLayout aimViewContainer = findViewById(R.id.aim_view_container);
@@ -321,14 +323,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 if (isBossDefeated) {
                     Log.d(TAG, "isBossDefeated: true; finished");
-                    Intent i = new Intent(MapsActivity.this, ResultActivity.class);
-                    // putExtra
-                    i.putExtra("TIME_STRING", timeString);
-                    i.putExtra("DISTANCE", distance);
-                    i.putExtra("TIME_SECOND", timeSecond);
-                    startActivity(i);
-                    isBossDefeated = false;
-                    finish();
+//                    Intent i = new Intent(MapsActivity.this, ResultActivity.class);
+//                    // putExtra
+//                    i.putExtra("TIME_STRING", timeString);
+//                    i.putExtra("DISTANCE", distance);
+//                    i.putExtra("TIME_SECOND", timeSecond);
+//                    startActivity(i);
+//                    isBossDefeated = false;
+//                    finish();
                 }
             }
         }, 1000, 1000);
@@ -339,7 +341,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void run() {
                 runOnUiThread(() -> {
-                    MapsActivity.this.tv_walkTime.setText("Adventure time: " + timeString);
+                    MapsActivity.this.tv_walkTime.setText("Adventure Time: " + timeString);
                     if (currLocation!=null) {
 
                         MapsActivity.this.tv_walkDistance.setText("Distance: " + distance + " km");
@@ -347,21 +349,64 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         if (isInsideDetArea){
                             btn_camera.setEnabled(true);
                             tv_cameraState.setText("Camera Ready");
-                            try {
-                                arFragment.getArSceneView().resume();
-                            } catch (CameraNotAvailableException e) {
-                                e.printStackTrace();
+                            if (!isBossDefeated) {
+                                try {
+                                    arFragment.getArSceneView().resume();
+                                } catch (CameraNotAvailableException e) {
+                                    e.printStackTrace();
+                                }
                             }
                         } else {
                             btn_camera.setEnabled(false);
                             tv_cameraState.setText("Camera Not Ready");
                             arFragment.getArSceneView().pause();
                         }
+
+                        if (isBossDefeated) {
+                            resultContainer.setTranslationY(0);
+                            btn_shoot.setTranslationY(5000);
+                            btn_camera.setTranslationY(5000);
+                            btn_map_focus.setTranslationY(5000);
+
+                            TextView tv_score = findViewById(R.id.tv_score);
+                            TextView tv_highScore = findViewById(R.id.tv_highest_score);
+                            TextView tv_result_adventureTime = findViewById(R.id.tv_adventure_time);
+                            TextView tv_result_distance = findViewById(R.id.tv_distance);
+
+                            int score = (int) (Math.log10(10800/timeSecond)/Math.log10(2));
+                            tv_score.setText(score + "");
+                            tv_result_adventureTime.setText("Adventure Time: " + timeString);
+                            tv_result_distance.setText("Travel Distance: " + distance + " km");
+
+                            SharedPreferences sharedPreferences = getSharedPreferences("settingPreferences", MODE_PRIVATE);
+                            if (!sharedPreferences.getBoolean("HAS_RECORD", false)) {
+                                sharedPreferences.edit()
+                                        .putInt("HIGH_SCORE", score)
+                                        .putBoolean("NO_RECORD", true)
+                                        .apply();
+                            } else {
+                                if (sharedPreferences.getInt("HIGH_SCORE", 0) < score) {
+                                    sharedPreferences.edit()
+                                            .putInt("HIGH_SCORE", score)
+                                            .apply();
+                                }
+                                tv_highScore.setText(sharedPreferences.getInt("HIGH_SCORE", 0)+"");
+                            }
+                            isBossDefeated = false;
+                        }
                     }
                 });
             }
         };
         uiTimer.scheduleAtFixedRate(uiTimerTask, 0, 1000);
+
+        resultContainer = findViewById(R.id.result_container);
+        resultContainer.setTranslationY(5000);
+
+        btn_finish.setOnClickListener(v -> {
+            arFragment.onDestroy();
+//            finish()
+        });
 
         // must be the last func in onCreate
         updateLocation();
@@ -545,9 +590,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         Random random = new Random();
                         Vector3 tempV = new Vector3();
                         int negFactor;
-                        negFactor = random.nextInt(3) > 1? 1:1;
+                        negFactor = random.nextInt(3) >= 1? 1:-1;
                         tempV.x += (hintNode.getLocalPosition().x + random.nextInt(4) +1) * negFactor;
-                        negFactor = random.nextInt(3) > 1? 1:1;
+                        negFactor = random.nextInt(3) >= 1? 1:-1;
                         tempV.y += hintNode.getLocalPosition().y;
                         tempV.z += (hintNode.getLocalPosition().z + random.nextInt(4) +1) * negFactor;
                         hintNode.setLocalPosition(tempV);
@@ -579,9 +624,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         Random random = new Random();
                         Vector3 tempV = new Vector3();
                         int negFactor;
-                        negFactor = random.nextInt(3) > 1? 1:1;
+                        negFactor = random.nextInt(3) >= 1? 1:-1;
                         tempV.x += (bossNode.getLocalPosition().x + random.nextInt(4) +1) * negFactor;
-                        negFactor = random.nextInt(3) > 1? 1:1;
+                        negFactor = random.nextInt(3) >= 1? 1:-1;
                         tempV.y += bossNode.getLocalPosition().y;
                         tempV.z += (bossNode.getLocalPosition().z + random.nextInt(4) +1) * negFactor;
                         bossNode.setLocalPosition(tempV);
@@ -659,13 +704,69 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 removeNode(hintNode, deleteParent);
 
             } else if (node.getName().equals(modelNames[BOSS_INDEX])) {
-                // - boss hp
-                bossHP -= 400;
-                isBossDefeated = true;
-                Log.d(TAG, "boss hit");
                 removeNode(bossNode, true);
-                isInsideDetArea = false;
-                arFragment.onDestroy();
+
+                isBossDefeated = true;
+
+//                new Timer().schedule(new TimerTask() {
+//                    @Override
+//                    public void run() {
+//                        runOnUiThread(() -> {
+//
+//                            btn_shoot.setTranslationY(5000);
+//                            btn_camera.setTranslationY(5000);
+//                            btn_map_focus.setTranslationY(5000);
+//                            TextView tv_score = findViewById(R.id.tv_score);
+//                            TextView tv_highScore = findViewById(R.id.tv_highest_score);
+//                            TextView tv_result_adventureTime = findViewById(R.id.tv_adventure_time);
+//                            TextView tv_result_distance = findViewById(R.id.tv_distance);
+//
+//                            int score = (int) (Math.log10(10800/timeSecond)/Math.log10(2));
+//                            tv_score.setText(score);
+//                            tv_result_adventureTime.setText("Adventure Time: " + timeString);
+//                            tv_result_distance.setText("Travel Distance: " + distance + " km");
+//
+//                            SharedPreferences sharedPreferences = getSharedPreferences("settingPreferences", MODE_PRIVATE);
+//                            if (!sharedPreferences.getBoolean("HAS_RECORD", false)) {
+//                                sharedPreferences.edit()
+//                                        .putInt("HIGH_SCORE", score)
+//                                        .putBoolean("NO_RECORD", true)
+//                                        .apply();
+//                            } else {
+//                                if (sharedPreferences.getInt("HIGH_SCORE", 0) < score) {
+//                                    sharedPreferences.edit()
+//                                            .putInt("HIGH_SCORE", score)
+//                                            .apply();
+//                                }
+//                                tv_highScore.setText(sharedPreferences.getInt("HIGH_SCORE", 0));
+//                            }
+//                        });
+//                    }
+//                }, 1500);
+                // - boss hp
+//                bossHP -= 400;
+//                isBossDefeated = true;
+//                Log.d(TAG, "boss hit");
+
+//                isInsideDetArea = false;
+//                try {
+//                    arFragment.getArSceneView().destroy();
+////                    arFragment.onPause();
+////                    arFragment.onDestroy();
+//                } catch (Exception ignored) { }
+//                new Timer().schedule(new TimerTask() {
+//                    @Override
+//                    public void run() {
+//                        Intent i = new Intent(MapsActivity.this, ResultActivity.class);
+//                        // putExtra
+//                        i.putExtra("TIME_STRING", timeString);
+//                        i.putExtra("DISTANCE", distance);
+//                        i.putExtra("TIME_SECOND", timeSecond);
+//                        startActivity(i);
+//                        isBossDefeated = false;
+//                        MapsActivity.this.finish();
+//                    }
+//                }, 1500);
             }
         }
     }
